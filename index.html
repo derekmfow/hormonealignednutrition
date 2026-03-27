@@ -73,7 +73,7 @@ async function readScreenshotWithClaude(base64, mimeType) {
   // Android Chrome sometimes returns empty or non-standard mime types — normalize to jpeg
   const safeMime = (mimeType && ["image/jpeg","image/png","image/gif","image/webp"].includes(mimeType))
     ? mimeType : "image/jpeg";
-  const res = await fetch("/api/claude", {
+  const res = await fetch("/.netlify/functions/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -168,7 +168,7 @@ OUTPUT valid JSON only, no markdown:
   const medsNote = medications?.length ? `Client protocols: ${medications.join(", ")}` : "No medications reported.";
   const msg = `Goal: ${goal}\nTargets: ${targets.protein}g protein, ${targets.carbs}g carbs, ${targets.fat}g fat (${targets.calories} cal)\n${medsNote}\n\nMeals:\n${meals.map((m,i) => `Meal ${i+1} — ${m.name}: ${m.items}`).join("\n")}\n\nAnalyze and return JSON.`;
 
-  const res = await fetch("/api/claude", {
+  const res = await fetch("/.netlify/functions/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, system: sys, messages: [{ role: "user", content: msg }] })
