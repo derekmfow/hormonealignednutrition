@@ -69,13 +69,27 @@ GUT HEALTH: Sauerkraut, kefir.
 SWEETS: Low-calorie options that work with digestion — avoid maltitol/sorbitol; monk fruit and erythritol okay.
 SWAP PHILOSOPHY: Always offer both levels. Never say healthier — say less processed. The goal is curiosity not compliance. Client picks.`;
 
+function getApiKey() {
+  let key = sessionStorage.getItem("ham_api_key");
+  if (!key) {
+    key = prompt("Enter your access key to continue:");
+    if (key) sessionStorage.setItem("ham_api_key", key);
+  }
+  return key;
+}
+
 async function readScreenshotWithClaude(base64, mimeType) {
   // Android Chrome sometimes returns empty or non-standard mime types — normalize to jpeg
   const safeMime = (mimeType && ["image/jpeg","image/png","image/gif","image/webp"].includes(mimeType))
     ? mimeType : "image/jpeg";
-  const res = await fetch("/.netlify/functions/claude", {
+  const apiKey = getApiKey();
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01"
+    },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1500,
@@ -168,9 +182,14 @@ OUTPUT valid JSON only, no markdown:
   const medsNote = medications?.length ? `Client protocols: ${medications.join(", ")}` : "No medications reported.";
   const msg = `Goal: ${goal}\nTargets: ${targets.protein}g protein, ${targets.carbs}g carbs, ${targets.fat}g fat (${targets.calories} cal)\n${medsNote}\n\nMeals:\n${meals.map((m,i) => `Meal ${i+1} — ${m.name}: ${m.items}`).join("\n")}\n\nAnalyze and return JSON.`;
 
-  const res = await fetch("/.netlify/functions/claude", {
+  const apiKey = getApiKey();
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01"
+    },
     body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, system: sys, messages: [{ role: "user", content: msg }] })
   });
   const data = await res.json();
