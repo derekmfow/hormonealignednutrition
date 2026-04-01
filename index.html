@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Hormone Aligned Macros</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: #1A1A1A; font-family: Georgia, serif; overscroll-behavior: none; }
+input, textarea, button { font-family: Georgia, serif; }
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+::-webkit-scrollbar { width: 0; background: transparent; }
+@keyframes pulse {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useCallback } = React;
+
+// ── Config ────────────────────────────────────────────────────────────────────
+const CLIENT_PIN = "1987";
+// API calls proxied through server
+
+// ── PIN Gate ──────────────────────────────────────────────────────────────────
+function PinGate({ children }) {
+  const [pin, setPin] = React.useState("");
+  const [unlocked, setUnlocked] = React.useState(
+    sessionStorage.getItem("ham_unlocked") === "1987"
+  );
+  const [error, setError] = React.useState(false);
+
+  const tryPin = () => {
+    if (pin === CLIENT_PIN) {
+      sessionStorage.setItem("ham_unlocked", CLIENT_PIN);
+      setUnlocked(true);
+    } else {
+      setError(true);
+      setPin("");
+      setTimeout(() => setError(false), 2000);
+    }
+  };
+
+  if (unlocked) return children;
+
+  return (
+    <div style={{ maxWidth: 400, margin: "0 auto", padding: "80px 24px", minHeight: "100vh", background: "#1A1A1A", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "#E8611A", fontWeight: 700, textTransform: "uppercase", marginBottom: 16 }}>Free The Macro</div>
+      <div style={{ fontSize: 30, fontWeight: 800, color: "#F5F0EB", marginBottom: 8, letterSpacing: "-0.02em", textAlign: "center" }}>Hormone Aligned<br />Macros</div>
+      <div style={{ fontSize: 13, color: "#888", marginBottom: 48, textAlign: "center" }}>Enter your access code</div>
+      <input
+        type="password"
+        value={pin}
+        onChange={e => setPin(e.target.value)}
+        onKeyDown={e => e.key === "Enter" && tryPin()}
+        placeholder="••••"
+        autoFocus
+        style={{ width: "100%", background: "#252525", border: "1.5px solid " + (error ? "#E84646" : "#333"), borderRadius: 12, padding: "16px", color: "#F5F0EB", fontSize: 24, textAlign: "center", letterSpacing: "0.4em", outline: "none", marginBottom: 12, boxSizing: "border-box", transition: "border-color 0.2s" }}
+      />
+      {error && <p style={{ color: "#E84646", fontSize: 13, marginBottom: 12 }}>Incorrect — try again</p>}
+      <button type="button" onClick={tryPin}
+        style={{ width: "100%", padding: 16, background: "#E8611A", color: "#fff", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 800, cursor: "pointer", fontFamily: "Georgia, serif" }}>
+        Unlock
+      </button>
+    </div>
+  );
+}
+
+let _id = 100;
+const uid = () => ++_id;
+
+const BRAND = { dark: "#1A1A1A", orange: "#E8611A", offwhite: "#F5F0EB", muted: "#888" };
+
+const GOALS = [
+  { id: "fat_loss", label: "Fat Loss", desc: "Deficit · Lean swaps · High protein", icon: "🔥" },
+  { id: "recomp",   label: "Recomp",   desc: "Maintenance · Quality upgrades",      icon: "⚖️" },
+  { id: "gain",     label: "Build",    desc: "Surplus · Dense nutrition",            icon: "💪" },
+];
+
+const COOKBOOKS = [];
+
+const MACRO_PROFILES = {
+  fat_loss: { protein: 35, carbs: 40, fat: 25 },
+  recomp:   { protein: 35, carbs: 40, fat: 25 },
+  gain:     { protein: 35, carbs: 40, fat: 25 },
+};
+
+const ACTIVITY_MULTIPLIERS = { sedentary: 1.2, light: 1.375, moderate: 1.55, very: 1.725 };
+
+const GOAL_CAL_ADJUST = {
+  fat_loss: cal => Math.round(cal * 0.80),
+  recomp:   cal => Math.round(cal),
+  gain:     cal => Math.round(cal * 1.10),
+};
+
+function pctToGrams(pct, macro, cal) {
+  return Math.round((cal * pct / 100) / (macro === "fat" ? 9 : 4));
+}
+function gramsToCalPct(g, macro, cal) {
+  if (!cal) return 0;
+  return Math.round((g * (macro === "fat" ? 9 : 4) / cal) * 100);
+}
+
+const DEREK_INGREDIENTS = "DEREK APPROVED LIST: Proteins: 93/7 grass-fed beef (L2), chicken breast, turkey, canned tuna (L1), tuna steak (L2), eggs, egg whites (fast-digesting, great for GLP-1), Greek yogurt full-fat or fat-free, kefir. Dairy/Fat: real butter (L2), ghee (L2), fat-free cheese (L1), Parmigiano-Reggiano block self-shredded (L2, no anti-caking agents). Carbs: white/jasmine/black rice, Einkhorn wheat flour (L2), Zego oats (L2), cream of rice, homemade sourdough (L2), clean-label wraps/taco shells (L1), pan-popped popcorn NOT bag (L2). Fruits: berries, bananas (pre/post workout), pineapple. Condiments: Siete seasonings (L2), single-ingredient spices (L2), monk fruit powder, maple syrup (moderation), PB Fit (L1). Gut health: sauerkraut, kefir. Sweets: low-cal options with clean sweeteners (no maltitol/sorbitol). SWAP RULE: Always offer L1 easy switch AND L2 less processed. Never say healthier. Say less processed. Client picks — curiosity not compliance.";
+
+async function apiCall(payload) {
+  const res = await fetch("/api/claude", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+async function readScreenshot(base64, mimeType) {
+  const safe = (mimeType && ["image/jpeg","image/png","image/gif","image/webp"].includes(mimeType)) ? mimeType : "image/jpeg";
+  const data = await apiCall({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1000,
+    system: 'Read this nutrition tracking app screenshot. Extract every meal and food item. Output valid JSON only: {"meals":[{"name":"Breakfast","items":"food1, food2"}],"totals":{"calories":0,"protein":0,"carbs":0,"fat":0}}. Use Meal 1/2/3 if names unclear. Set totals to 0 if not visible.',
+    messages: [{ role: "user", content: [
+      { type: "image", source: { type: "base64", media_type: safe, data: base64 } },
+      { type: "text", text: "Extract all meals and food items. Return JSON only." }
+    ]}]
+  });
+  const text = data.content?.find(b => b.type === "text")?.text || "{}";
+  try { return JSON.parse(text.replace(/```json|```/g, "").trim()); }
+  catch { return null; }
+}
+
+async function analyzeMeals(meals, goal, targets, medications) {
+  const medNote = medications.length ? "Client protocols: " + medications.join(", ") : "No medications.";
+  const mealList = meals.map((m, i) => "Meal " + (i+1) + " — " + m.name + ": " + m.items).join("\n");
+  const userMsg = "Goal: " + goal + "\nTargets: " + targets.protein + "g protein, " + targets.carbs + "g carbs, " + targets.fat + "g fat (" + targets.calories + " cal)\n" + medNote + "\n\nMeals:\n" + mealList + "\n\nAnalyze and return JSON.";
+
+  const sysMsg = "You are the AI coaching engine for Hormone Aligned Macros by Derek Fowler — 16-year nutrition coach specializing in HRT and GLP-1 clients who lift weights.\n\nCORE RULES:\n- MACRO COMPLIANCE IS THE FIRST PRIORITY. Hitting targets = a WIN. Celebrate it.\n- Only suggest swaps when something is genuinely off. Never manufacture suggestions.\n- Derek's method: gradual ingredient reduction toward single-ingredient whole foods while keeping meals intact and tasting good. Long-term process. Do not rush.\n- If macros are on target and food is reasonable, return strong status with empty swaps. Acknowledge the win.\n- Never say healthier. Say less processed.\n- Protein minimum 1g per lb bodyweight daily. In deficit 1.1-1.3g. Minimum 30g every 4 hours.\n- If any meal under 30g protein that is the first fix. Flag it.\n- Never cut protein to hit calories.\n\nHRT: increased appetite first 1-3 months is normal. May need more carbs/protein. Do not aggressively cut during stabilization.\nGLP-1: hunger suppressed pharmacologically. Must hit protein even with no appetite. Avoid high-fat high-volume combos. Fast-digesting proteins for low appetite.\n\n" + DEREK_INGREDIENTS + "\n\nDUAL SWAP FORMAT: Every swap offers two options:\n- swap_easy: Level 1 easy switch\n- swap_clean: Level 2 less processed\nOnly include swaps when genuinely needed.\n\nOUTPUT valid JSON only:\n{\"summary\":\"2-3 sentences. Lead with congratulations if macros on target. Lead with biggest fix if off. Never say healthier.\",\"flags\":[\"urgent issues only\"],\"score\":{\"protein\":0,\"carbs\":0,\"fat\":0,\"overall\":0},\"meals\":[{\"meal\":\"name\",\"status\":\"needs_work|aligned|strong\",\"note\":\"1-2 sentences\",\"swaps\":[{\"swap_out\":\"ingredient\",\"why\":\"reason\",\"swap_easy\":{\"name\":\"...\",\"note\":\"...\",\"impact\":\"...\"},\"swap_clean\":{\"name\":\"...\",\"note\":\"...\",\"impact\":\"...\"}}]}]}";
+
+  const data = await apiCall({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 2500,
+    system: sysMsg,
+    messages: [{ role: "user", content: userMsg }]
+  });
+  const text = data.content?.find(b => b.type === "text")?.text || "{}";
+  try { return JSON.parse(text.replace(/```json|```/g, "").trim()); }
+  catch { return null; }
+}
+
+async function lookupRestaurant(restaurant, orderQuery, targets) {
+  const tgt = targets.protein + "g protein, " + targets.carbs + "g carbs, " + targets.fat + "g fat (" + targets.calories + " cal) daily. Per meal aim for 25-35% of daily totals.";
+  const isSpecificItem = orderQuery.length > 0 && !orderQuery.toLowerCase().includes("something") && !orderQuery.toLowerCase().includes("anything") && !orderQuery.toLowerCase().includes("whatever");
+  const sysMsg = "You are a nutrition expert for Hormone Aligned Macros. Use real menu data and nutrition knowledge. Client daily targets: " + tgt
+    + " Output valid JSON only, no markdown. Format: {\"restaurant\":\"name\",\"searched_item\":{\"name\":\"exact item name or null\",\"calories\":0,\"protein\":0,\"carbs\":0,\"fat\":0,\"note\":\"brief macro context\"},\"summary\":\"1-2 sentences\",\"options\":[{\"rank\":1,\"name\":\"item\",\"calories\":0,\"protein\":0,\"carbs\":0,\"fat\":0,\"fit_score\":0,\"fit_note\":\"why this fits\",\"modification\":\"order tip or empty\"}]}"
+    + " If the client searched for a specific item (not just browsing), populate searched_item with its real macros. Then show top 5 alternatives ranked by macro fit. Always prioritize protein.";
+  const userMsg = "Restaurant: " + restaurant + ". Client wants: " + orderQuery + ". Return JSON with the searched item macros (if specific) plus top 5 macro-aligned alternatives.";
+  const data = await apiCall({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1500,
+    system: sysMsg,
+    messages: [{ role: "user", content: userMsg }]
+  });
+  const text = data.content?.find(b => b.type === "text")?.text || "{}";
+  try { return JSON.parse(text.replace(/```json|```/g, "").trim()); }
+  catch { return null; }
+}
+
+// ── Shared Components ─────────────────────────────────────────────────────────
+
+function Tag({ children, color }) {
+  const c = color || BRAND.orange;
+  return <span style={{ background: c + "22", color: c, fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, letterSpacing: "0.05em", textTransform: "uppercase" }}>{children}</span>;
+}
+
+function Toggle({ value, onChange, options }) {
+  return (
+    <div style={{ display: "inline-flex", background: "#252525", borderRadius: 8, padding: 3, gap: 2 }}>
+      {options.map(o => (
+        <button key={o.value} type="button" onClick={() => onChange(o.value)}
+          style={{ padding: "5px 14px", borderRadius: 6, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "Georgia,serif", background: value === o.value ? BRAND.orange : "transparent", color: value === o.value ? "#fff" : BRAND.muted, transition: "all 0.15s" }}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function MacroBar({ label, value, max, color }) {
+  const w = Math.min(100, max > 0 ? Math.round((value / max) * 100) : 0);
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+        <span style={{ fontSize: 12, color: BRAND.muted, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>{label}</span>
+        <span style={{ fontSize: 12, color: BRAND.offwhite, fontWeight: 700 }}>{value}g <span style={{ color: BRAND.muted }}>/ {max}g</span></span>
+      </div>
+      <div style={{ height: 6, background: "#333", borderRadius: 3, overflow: "hidden" }}>
+        <div style={{ width: w + "%", height: "100%", background: color, borderRadius: 3, transition: "width 0.6s ease" }} />
+      </div>
+    </div>
+  );
+}
+
+function ScoreRing({ value, label }) {
+  const r = 28, c = 2 * Math.PI * r, fill = c - (c * (value || 0) / 100);
+  const col = value >= 80 ? "#4CAF82" : value >= 55 ? BRAND.orange : "#E84646";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+      <svg width={70} height={70} viewBox="0 0 70 70">
+        <circle cx={35} cy={35} r={r} fill="none" stroke="#333" strokeWidth={5} />
+        <circle cx={35} cy={35} r={r} fill="none" stroke={col} strokeWidth={5} strokeDasharray={c} strokeDashoffset={fill} strokeLinecap="round" transform="rotate(-90 35 35)" style={{ transition: "stroke-dashoffset 0.8s ease" }} />
+        <text x={35} y={39} textAnchor="middle" fill={col} fontSize={14} fontWeight={800}>{value ?? "—"}</text>
+      </svg>
+      <span style={{ fontSize: 11, color: BRAND.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+    </div>
+  );
+}
+
+function SmallRing({ value }) {
+  const r = 20, c = 2 * Math.PI * r, fill = c - (c * (value || 0) / 100);
+  const col = value >= 80 ? "#4CAF82" : value >= 55 ? BRAND.orange : "#E84646";
+  return (
+    <svg width={48} height={48} viewBox="0 0 48 48">
+      <circle cx={24} cy={24} r={r} fill="none" stroke="#333" strokeWidth={4} />
+      <circle cx={24} cy={24} r={r} fill="none" stroke={col} strokeWidth={4} strokeDasharray={c} strokeDashoffset={fill} strokeLinecap="round" transform="rotate(-90 24 24)" />
+      <text x={24} y={28} textAnchor="middle" fill={col} fontSize={10} fontWeight={800}>{value}</text>
+    </svg>
+  );
+}
+
+function SwapCard({ swap }) {
+  const sc = { needs_work: "#E84646", aligned: BRAND.orange, strong: "#4CAF82" };
+  const [picked, setPicked] = useState(null);
+  const [selected, setSelected] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const pressTimer = useRef(null);
+  const borderCol = selected ? BRAND.orange : (sc[swap.status] || BRAND.orange);
+
+  const handlePressStart = () => {
+    pressTimer.current = setTimeout(() => {
+      setSelected(true);
+    }, 500);
+  };
+  const handlePressEnd = () => {
+    clearTimeout(pressTimer.current);
+  };
+
+  const handleSave = async () => {
+    const el = document.getElementById("card-" + swap.meal.replace(/\s/g,""));
+    if (!el) return;
+    try {
+      const canvas = document.createElement("canvas");
+      const scale = 2;
+      const rect = el.getBoundingClientRect();
+      canvas.width = rect.width * scale;
+      canvas.height = rect.height * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(scale, scale);
+      ctx.fillStyle = "#1A1A1A";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      const data = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.download = swap.meal.replace(/\s/g,"-") + "-analysis.png";
+      link.href = data;
+      link.click();
+      setSaved(true);
+      setTimeout(() => { setSaved(false); setSelected(false); }, 2000);
+    } catch(e) {
+      // Fallback: just deselect
+      setSelected(false);
+    }
+  };
+
+  return (
+    <div id={"card-" + swap.meal.replace(/\s/g,"")}
+      onMouseDown={handlePressStart} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd}
+      onTouchStart={handlePressStart} onTouchEnd={handlePressEnd}
+      style={{ background: selected ? "#252535" : "#252525", borderRadius: 12, padding: 14, marginBottom: 10, borderLeft: "3px solid " + borderCol, transition: "all 0.2s", boxShadow: selected ? "0 0 0 2px " + BRAND.orange + "44" : "none" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <span style={{ fontWeight: 700, fontSize: 14, color: BRAND.offwhite }}>{swap.meal}</span>
+        {selected && (
+          <button type="button" onClick={handleSave}
+            style={{ background: BRAND.orange, border: "none", borderRadius: 8, padding: "4px 10px", color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
+            {saved ? "✓ Saved" : "Save Card"}
+          </button>
+        )}
+      </div>
+      {selected && !saved && <p style={{ fontSize: 11, color: BRAND.orange, margin: "0 0 8px", fontStyle: "italic" }}>Tap Save Card to download this meal card.</p>}
+      <p style={{ fontSize: 12, color: BRAND.muted, margin: "0 0 12px", lineHeight: 1.5 }}>{swap.note}</p>
+      {swap.swaps && swap.swaps.map((s, i) => (
+        <div key={i} style={{ marginBottom: i < swap.swaps.length - 1 ? 14 : 0 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13, color: "#E84646", textDecoration: "line-through", opacity: 0.75 }}>{s.swap_out}</span>
+            <span style={{ fontSize: 12, color: BRAND.muted }}>— {s.why}</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <button type="button" onClick={() => setPicked(picked === i + "-easy" ? null : i + "-easy")}
+              style={{ background: picked === i + "-easy" ? "#2A3A2A" : "#1A1A1A", border: "1.5px solid " + (picked === i + "-easy" ? "#4CAF82" : "#333"), borderRadius: 10, padding: 10, cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#4CAF82", marginBottom: 4 }}>Easy Switch</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: BRAND.offwhite, marginBottom: 4, lineHeight: 1.3 }}>{s.swap_easy && s.swap_easy.name}</div>
+              <div style={{ fontSize: 11, color: BRAND.muted, lineHeight: 1.4, marginBottom: 6 }}>{s.swap_easy && s.swap_easy.note}</div>
+              <Tag color="#4CAF82">{s.swap_easy && s.swap_easy.impact}</Tag>
+            </button>
+            <button type="button" onClick={() => setPicked(picked === i + "-clean" ? null : i + "-clean")}
+              style={{ background: picked === i + "-clean" ? "#2A2A3A" : "#1A1A1A", border: "1.5px solid " + (picked === i + "-clean" ? BRAND.orange : "#333"), borderRadius: 10, padding: 10, cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: BRAND.orange, marginBottom: 4 }}>You could also try…</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: BRAND.offwhite, marginBottom: 4, lineHeight: 1.3 }}>{s.swap_clean && s.swap_clean.name}</div>
+              <div style={{ fontSize: 11, color: BRAND.muted, lineHeight: 1.4, marginBottom: 6 }}>{s.swap_clean && s.swap_clean.note}</div>
+              <Tag color={BRAND.orange}>{s.swap_clean && s.swap_clean.impact}</Tag>
+            </button>
+          </div>
+          {picked === null || !picked.startsWith(i + "-") ? (
+            <p style={{ fontSize: 11, color: BRAND.muted, margin: "8px 0 0", textAlign: "center", fontStyle: "italic" }}>Tap either one — you pick.</p>
+          ) : (
+            <div style={{ marginTop: 8, padding: "8px 12px", background: "#1E1E1E", borderRadius: 8, display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 14 }}>{picked.endsWith("-easy") ? "✓" : "⭐"}</span>
+              <span style={{ fontSize: 12, color: BRAND.offwhite }}>{picked.endsWith("-easy") ? "Easy switch noted. Solid move." : "Less processed version. Worth trying at least once."}</span>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CookbookCard({ recipe }) {
+  return (
+    <div style={{ background: "#252525", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+        <span style={{ fontWeight: 800, fontSize: 15, color: BRAND.offwhite, maxWidth: "70%" }}>{recipe.name}</span>
+        <span style={{ fontSize: 12, color: BRAND.orange, fontWeight: 700 }}>{recipe.macros.calories} cal</span>
+      </div>
+      <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
+        {["protein","carbs","fat"].map(m => <span key={m} style={{ fontSize: 12, color: BRAND.muted }}>{m[0].toUpperCase()}: <strong style={{ color: BRAND.offwhite }}>{recipe.macros[m]}g</strong></span>)}
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{recipe.tags && recipe.tags.map(t => <Tag key={t}>{t}</Tag>)}</div>
+    </div>
+  );
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
+function HamApp() {
+  const [screen, setScreen] = useState("setup");
+  const [goal, setGoal] = useState("fat_loss");
+  const [macroMode, setMacroMode] = useState("grams");
+  const [targets, setTargets] = useState({ protein: 180, carbs: 200, fat: 48, calories: 1800 });
+  const [pctTargets, setPctTargets] = useState({ protein: 35, carbs: 40, fat: 25 });
+  const [medications, setMedications] = useState([]);
+  const [meals, setMeals] = useState([
+    { id: uid(), name: "Meal 1", items: "" },
+    { id: uid(), name: "Meal 2", items: "" },
+    { id: uid(), name: "Meal 3", items: "" },
+  ]);
+  const [results, setResults] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [scanError, setScanError] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [cookbookSearch, setCookbookSearch] = useState("");
+  const [stats, setStats] = useState({ age: "", weight: "", height_ft: "", height_in: "", sex: "male" });
+  const [activity, setActivity] = useState("moderate");
+  const [tdee, setTdee] = useState(null);
+  const [restaurant, setRestaurant] = useState("");
+  const [orderQuery, setOrderQuery] = useState("");
+  const [restLoading, setRestLoading] = useState(false);
+  const [restResults, setRestResults] = useState(null);
+  const [restError, setRestError] = useState(null);
+  const [profile, setProfile] = useState(() => {
+    try { const s = localStorage.getItem("ham_profile"); return s ? JSON.parse(s) : { name: "", training: "", notes: "" }; }
+    catch { return { name: "", training: "", notes: "" }; }
+  });
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  const saveProfile = () => {
+    try {
+      const full = { ...profile, goal, targets, medications, stats, activity, savedAt: new Date().toLocaleDateString() };
+      localStorage.setItem("ham_profile", JSON.stringify(full));
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2000);
+    } catch(e) { alert("Could not save profile. Storage may be unavailable."); }
+  };
+
+  const exportProfile = () => {
+    try {
+      const full = { ...profile, goal, targets, medications, stats, activity, savedAt: new Date().toLocaleDateString() };
+      const lines = [
+        "HORMONE ALIGNED MACROS — CLIENT PROFILE",
+        "Generated: " + new Date().toLocaleDateString(),
+        "",
+        "NAME: " + (full.name || "—"),
+        "AGE: " + (full.stats && full.stats.age ? full.stats.age : "—"),
+        "WEIGHT: " + (full.stats && full.stats.weight ? full.stats.weight + " lbs" : "—"),
+        "HEIGHT: " + (full.stats && full.stats.height_ft ? full.stats.height_ft + "'" + (full.stats.height_in || "0") + '"' : "—"),
+        "SEX: " + (full.stats && full.stats.sex ? full.stats.sex : "—"),
+        "",
+        "GOAL: " + (full.goal || "—"),
+        "ACTIVITY: " + (full.activity || "—"),
+        "CALORIES: " + (full.targets && full.targets.calories ? full.targets.calories : "—"),
+        "PROTEIN: " + (full.targets && full.targets.protein ? full.targets.protein + "g" : "—"),
+        "CARBS: " + (full.targets && full.targets.carbs ? full.targets.carbs + "g" : "—"),
+        "FAT: " + (full.targets && full.targets.fat ? full.targets.fat + "g" : "—"),
+        "",
+        "MEDICATIONS/PROTOCOLS: " + (full.medications && full.medications.length ? full.medications.join(", ") : "None"),
+        "",
+        "TRAINING SCHEDULE: " + (full.training || "—"),
+        "",
+        "NOTES: " + (full.notes || "—"),
+      ];
+      const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = (full.name || "client").replace(/\s/g, "-") + "-HAM-profile.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch(e) { alert("Export failed."); }
+  };
+  const [loadingMsg, setLoadingMsg] = useState("");
+  const restCache = useRef({});
+  const fileRef = useRef(null);
+
+  const MED_OPTIONS = ["HRT — Testosterone", "HRT — Estrogen / Progesterone", "GLP-1 (Ozempic / Wegovy / Mounjaro)", "Other peptide protocol"];
+  const toggleMed = m => setMedications(p => p.includes(m) ? p.filter(x => x !== m) : [...p, m]);
+
+  const applyGoalDefaults = (g, baseCal) => {
+    const p = MACRO_PROFILES[g];
+    const cal = baseCal || targets.calories || 1800;
+    setPctTargets({ protein: p.protein, carbs: p.carbs, fat: p.fat });
+    setTargets({ calories: cal, protein: pctToGrams(p.protein,"protein",cal), carbs: pctToGrams(p.carbs,"carbs",cal), fat: pctToGrams(p.fat,"fat",cal) });
+  };
+
+  const calcTDEE = () => {
+    const { age, weight, height_ft, height_in, sex } = stats;
+    if (!age || !weight || height_ft === "") return;
+    const wKg = parseFloat(weight) * 0.453592;
+    const hCm = (parseFloat(height_ft) * 12 + parseFloat(height_in || 0)) * 2.54;
+    const a = parseFloat(age);
+    const bmr = sex === "male" ? 10*wKg + 6.25*hCm - 5*a + 5 : 10*wKg + 6.25*hCm - 5*a - 161;
+    const tdeeVal = Math.round(bmr * ACTIVITY_MULTIPLIERS[activity]);
+    setTdee(tdeeVal);
+    const goalCal = (GOAL_CAL_ADJUST[goal] || (c => c))(tdeeVal);
+    applyGoalDefaults(goal, goalCal);
+  };
+
+  const handleCalorieChange = cal => {
+    const c = +cal || 0;
+    setTargets({ calories: c, protein: pctToGrams(pctTargets.protein,"protein",c), carbs: pctToGrams(pctTargets.carbs,"carbs",c), fat: pctToGrams(pctTargets.fat,"fat",c) });
+  };
+  const handleGramChange = (macro, val) => {
+    const v = +val || 0;
+    setTargets(t => ({ ...t, [macro]: v }));
+    setPctTargets(p => ({ ...p, [macro]: gramsToCalPct(v, macro, targets.calories) }));
+  };
+  const handlePctChange = (macro, val) => {
+    const v = +val || 0;
+    setPctTargets(p => ({ ...p, [macro]: v }));
+    setTargets(t => ({ ...t, [macro]: pctToGrams(v, macro, t.calories) }));
+  };
+
+  const addMeal = () => setMeals(m => [...m, { id: uid(), name: "Meal " + (m.length + 1), items: "" }]);
+  const updateMeal = (id, f, v) => setMeals(m => m.map(x => x.id === id ? { ...x, [f]: v } : x));
+  const removeMeal = id => setMeals(m => m.filter(x => x.id !== id));
+
+  const processFiles = useCallback(async files => {
+    const images = Array.from(files).filter(f => f.type.startsWith("image/") || f.type === "" || (f.name && /\.(jpg|jpeg|png|webp|gif)$/i.test(f.name)));
+    if (!images.length) { setScanError("No image files found."); return; }
+    setScanError(null); setScanLoading(true);
+    try {
+      const results = await Promise.all(images.map(async file => {
+        const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); });
+        return readScreenshot(b64, file.type);
+      }));
+      const allMeals = results.flatMap(r => (r && r.meals) ? r.meals : []).map(m => ({ id: uid(), name: m.name, items: m.items }));
+      if (!allMeals.length) throw new Error("no meals");
+      setMeals(prev => {
+        const existing = prev.filter(m => m.items.trim().length > 0);
+        const existingNames = new Set(existing.map(m => m.name.toLowerCase().trim()));
+        const toAdd = allMeals.filter(m => !existingNames.has(m.name.toLowerCase().trim()));
+        const merged = [...existing, ...toAdd];
+        return merged.length > 0 ? merged : prev;
+      });
+    } catch(e) {
+      setScanError("Could not read screenshot. Make sure it shows your food diary with items listed.");
+    }
+    setScanLoading(false);
+  }, []);
+
+  const onDrop = useCallback(e => { e.preventDefault(); setDragOver(false); if (e.dataTransfer.files && e.dataTransfer.files.length) processFiles(e.dataTransfer.files); }, [processFiles]);
+
+  const analyze = async () => {
+    const filled = meals.filter(m => m.items.trim().length > 2);
+    if (!filled.length) { setError("Add at least one meal first."); return; }
+    setError(null); setLoading(true);
+    try {
+      const data = await analyzeMeals(filled, goal, targets, medications);
+      if (!data) throw new Error();
+      setResults(data); setScreen("results");
+    } catch { setError("Something went wrong. Try again."); }
+    setLoading(false);
+  };
+
+  const doRestaurantLookup = async () => {
+    if (!restaurant.trim() || !orderQuery.trim()) { setRestError("Enter a restaurant and what you are thinking of ordering."); return; }
+    const cacheKey = restaurant.trim().toLowerCase() + "|" + orderQuery.trim().toLowerCase();
+    if (restCache.current[cacheKey]) {
+      setRestResults(restCache.current[cacheKey]);
+      return;
+    }
+    setRestError(null); setRestLoading(true); setRestResults(null);
+    const msgs = [
+      "Checking " + restaurant + " menu…",
+      "Matching macros to your targets…",
+      "Ranking best options…",
+      "Almost there…"
+    ];
+    let msgIdx = 0;
+    setLoadingMsg(msgs[0]);
+    const msgTimer = setInterval(() => {
+      msgIdx = Math.min(msgIdx + 1, msgs.length - 1);
+      setLoadingMsg(msgs[msgIdx]);
+    }, 1800);
+    try {
+      const data = await lookupRestaurant(restaurant, orderQuery, targets);
+      if (!data) throw new Error();
+      restCache.current[cacheKey] = data;
+      setRestResults(data);
+    } catch { setRestError("Could not look that up. Check the restaurant name and try again."); }
+    clearInterval(msgTimer);
+    setLoadingMsg("");
+    setRestLoading(false);
+  };
+
+  const filteredRecipes = COOKBOOKS.filter(r => !cookbookSearch || r.name.toLowerCase().includes(cookbookSearch.toLowerCase()));
+
+  const S = {
+    screen: { maxWidth: 480, margin: "0 auto", padding: "0 16px 100px", minHeight: "100vh", background: BRAND.dark },
+    header: { paddingTop: 28, paddingBottom: 20 },
+    label: { fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: BRAND.muted, marginBottom: 6, display: "block" },
+    input: { width: "100%", background: "#252525", border: "1px solid #333", borderRadius: 10, padding: "12px 14px", color: BRAND.offwhite, fontSize: 14, boxSizing: "border-box", outline: "none" },
+    btn: { width: "100%", padding: 16, background: BRAND.orange, color: "#fff", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 800, cursor: "pointer" },
+    card: { background: "#1E1E1E", borderRadius: 14, padding: 18, marginBottom: 16 },
+    h1: { fontSize: 26, fontWeight: 800, color: BRAND.offwhite, margin: 0, letterSpacing: "-0.02em" },
+    sub: { fontSize: 13, color: BRAND.muted, margin: 0 },
+    tab: a => ({ flex: 1, padding: "8px 0", background: a ? BRAND.orange : "#1E1E1E", color: a ? "#fff" : BRAND.muted, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11, fontFamily: "Georgia,serif", borderRadius: 8, transition: "all 0.2s" }),
+  };
+
+  const Nav = () => (
+    <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "#141414", borderTop: "1px solid #2A2A2A", display: "flex", padding: "8px 12px 16px", gap: 6, zIndex: 100 }}>
+      {[["setup","⚙️","Setup"],["log","📝","Log"],["results","✦","Results"],["restaurant","🍽","Eat Out"],["profile","👤","Profile"]].map(([s,icon,lbl]) => (
+        <button key={s} type="button" onClick={() => setScreen(s)} style={S.tab(screen === s)}>
+          <div style={{ fontSize: 16, lineHeight: 1 }}>{icon}</div>
+          <div style={{ fontSize: 9, marginTop: 2 }}>{lbl}</div>
+        </button>
+      ))}
+    </div>
+  );
+
+  // ── SETUP ─────────────────────────────────────────────────────────────────
+  if (screen === "setup") return (
+    <div style={S.screen}>
+      <div style={S.header}>
+        <div style={{ fontSize: 11, letterSpacing: "0.15em", color: BRAND.orange, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Free The Macro</div>
+        <h1 style={S.h1}>Hormone Aligned<br />Macros</h1>
+        <p style={{ ...S.sub, marginTop: 6 }}>Set your goal. Log meals. Get two swap options. You pick.</p>
+      </div>
+
+      <div style={S.card}>
+        <span style={S.label}>Calculate Your Calories</span>
+        <p style={{ fontSize: 12, color: BRAND.muted, margin: "0 0 14px", lineHeight: 1.5 }}>Mifflin-St Jeor formula. Fill in your stats and we set your target automatically.</p>
+        <div style={{ marginBottom: 12 }}>
+          <span style={S.label}>Biological Sex</span>
+          <div style={{ display: "flex", gap: 8 }}>
+            {["male","female"].map(s => (
+              <button type="button" key={s} onClick={() => setStats(st => ({ ...st, sex: s }))}
+                style={{ flex: 1, padding: 10, borderRadius: 10, border: "1.5px solid " + (stats.sex === s ? BRAND.orange : "#333"), background: stats.sex === s ? BRAND.orange + "22" : "#252525", color: stats.sex === s ? BRAND.orange : BRAND.offwhite, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+          <div><span style={S.label}>Age</span><input style={S.input} type="number" placeholder="35" value={stats.age} onChange={e => setStats(s => ({ ...s, age: e.target.value }))} /></div>
+          <div><span style={S.label}>Weight (lbs)</span><input style={S.input} type="number" placeholder="185" value={stats.weight} onChange={e => setStats(s => ({ ...s, weight: e.target.value }))} /></div>
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <span style={S.label}>Height</span>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <input style={S.input} type="number" placeholder="Feet" value={stats.height_ft} onChange={e => setStats(s => ({ ...s, height_ft: e.target.value }))} />
+            <input style={S.input} type="number" placeholder="Inches" value={stats.height_in} onChange={e => setStats(s => ({ ...s, height_in: e.target.value }))} />
+          </div>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <span style={S.label}>Activity Level</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {[["sedentary","Sedentary — desk job, little movement"],["light","Lightly Active — 1–3 days/week"],["moderate","Moderately Active — 3–5 days/week"],["very","Very Active — 6–7 days/week"]].map(([key, lbl]) => (
+              <button type="button" key={key} onClick={() => setActivity(key)}
+                style={{ padding: "10px 12px", borderRadius: 10, border: "1.5px solid " + (activity === key ? BRAND.orange : "#333"), background: activity === key ? BRAND.orange + "22" : "#252525", color: activity === key ? BRAND.orange : BRAND.offwhite, fontWeight: activity === key ? 700 : 400, fontSize: 13, cursor: "pointer", textAlign: "left" }}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button type="button" onClick={calcTDEE} style={{ ...S.btn, background: "#252525", border: "1.5px solid " + BRAND.orange, color: BRAND.orange, padding: 13 }}>
+          Calculate My Targets
+        </button>
+        {tdee && (
+          <div style={{ marginTop: 14, padding: 14, background: "#252525", borderRadius: 10, borderLeft: "3px solid " + BRAND.orange }}>
+            <div style={{ display: "flex", justifyContent: "space-around", marginBottom: 10 }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 11, color: BRAND.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>Maintenance</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: BRAND.offwhite }}>{tdee}</div>
+                <div style={{ fontSize: 10, color: BRAND.muted }}>cal / day</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", color: BRAND.muted, fontSize: 20 }}>→</div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 11, color: BRAND.orange, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{goal === "fat_loss" ? "20% deficit" : goal === "gain" ? "10% surplus" : "maintenance"}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: BRAND.orange }}>{targets.calories}</div>
+                <div style={{ fontSize: 10, color: BRAND.muted }}>your target</div>
+              </div>
+            </div>
+            <p style={{ fontSize: 11, color: BRAND.muted, margin: 0, lineHeight: 1.5 }}>Calories and macros auto-filled below. Adjust anytime.</p>
+          </div>
+        )}
+      </div>
+
+      <div style={S.card}>
+        <span style={S.label}>Your Goal</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {GOALS.map(g => (
+            <button type="button" key={g.id} onClick={() => { setGoal(g.id); applyGoalDefaults(g.id, tdee ? (GOAL_CAL_ADJUST[g.id] || (c => c))(tdee) : null); }}
+              style={{ background: goal === g.id ? BRAND.orange + "22" : "#252525", border: "1.5px solid " + (goal === g.id ? BRAND.orange : "#333"), borderRadius: 10, padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
+              <span style={{ fontSize: 22 }}>{g.icon}</span>
+              <div>
+                <div style={{ fontWeight: 800, color: goal === g.id ? BRAND.orange : BRAND.offwhite, fontSize: 14 }}>{g.label}</div>
+                <div style={{ fontSize: 12, color: BRAND.muted }}>{g.desc}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={S.card}>
+        <span style={S.label}>Medications / Protocols</span>
+        <p style={{ fontSize: 12, color: BRAND.muted, margin: "0 0 12px", lineHeight: 1.5 }}>Select all that apply. Improves swap recommendations.</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {MED_OPTIONS.map(med => (
+            <button type="button" key={med} onClick={() => toggleMed(med)}
+              style={{ background: medications.includes(med) ? BRAND.orange + "22" : "#252525", border: "1.5px solid " + (medications.includes(med) ? BRAND.orange : "#333"), borderRadius: 10, padding: "10px 14px", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ width: 16, height: 16, borderRadius: 4, border: "2px solid " + (medications.includes(med) ? BRAND.orange : "#555"), background: medications.includes(med) ? BRAND.orange : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 11, color: "#fff" }}>{medications.includes(med) ? "✓" : ""}</span>
+              <span style={{ fontSize: 13, color: medications.includes(med) ? BRAND.orange : BRAND.offwhite, fontWeight: medications.includes(med) ? 700 : 400 }}>{med}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={S.card}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <span style={{ ...S.label, margin: 0 }}>Daily Targets</span>
+          <Toggle value={macroMode} onChange={setMacroMode} options={[{ value: "grams", label: "Grams" }, { value: "percent", label: "%" }]} />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <span style={S.label}>Calories</span>
+          <input style={S.input} type="number" value={targets.calories} onChange={e => handleCalorieChange(e.target.value)} placeholder="e.g. 1800" />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+          {["protein","carbs","fat"].map(m => (
+            <div key={m}>
+              <span style={S.label}>{m.charAt(0).toUpperCase() + m.slice(1)} {macroMode === "grams" ? "(g)" : "(%)"}</span>
+              {macroMode === "grams"
+                ? <input style={S.input} type="number" value={targets[m]} onChange={e => handleGramChange(m, e.target.value)} />
+                : <input style={S.input} type="number" value={pctTargets[m]} onChange={e => handlePctChange(m, e.target.value)} min={0} max={100} />
+              }
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 12, padding: "10px 12px", background: "#252525", borderRadius: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            {["protein","carbs","fat"].map(m => (
+              <div key={m} style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: BRAND.offwhite }}>{targets[m]}g</div>
+                <div style={{ fontSize: 11, color: BRAND.muted }}>{gramsToCalPct(targets[m], m, targets.calories)}%</div>
+                <div style={{ fontSize: 10, color: BRAND.muted, textTransform: "uppercase", letterSpacing: "0.05em" }}>{m}</div>
+              </div>
+            ))}
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: BRAND.orange }}>{targets.calories}</div>
+              <div style={{ fontSize: 11, color: BRAND.muted }}>—</div>
+              <div style={{ fontSize: 10, color: BRAND.muted, textTransform: "uppercase", letterSpacing: "0.05em" }}>cal</div>
+            </div>
+          </div>
+        </div>
+        <p style={{ fontSize: 11, color: BRAND.muted, marginTop: 10, lineHeight: 1.5 }}>Auto-filled from goal. Grams and % stay in sync.</p>
+      </div>
+
+      <button type="button" style={S.btn} onClick={() => setScreen("log")}>Start Logging Meals →</button>
+      <Nav />
+    </div>
+  );
+
+  // ── LOG ────────────────────────────────────────────────────────────────────
+  if (screen === "log") return (
+    <div style={S.screen}>
+      <div style={S.header}>
+        <h1 style={S.h1}>Today's Meals</h1>
+        <p style={S.sub}>Type meals or drop a tracking app screenshot.</p>
+      </div>
+      <div onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDrop} onClick={() => fileRef.current && fileRef.current.click()}
+        style={{ border: "2px dashed " + (dragOver ? BRAND.orange : "#444"), borderRadius: 14, padding: "22px 16px", textAlign: "center", marginBottom: 20, cursor: "pointer", background: dragOver ? BRAND.orange + "0A" : "#1A1A1A", transition: "all 0.2s" }}>
+        <input ref={fileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp,image/*" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) processFiles(e.target.files); e.target.value = ""; }} />
+        {scanLoading
+          ? <><div style={{ fontSize: 28, marginBottom: 8 }}>⏳</div><p style={{ color: BRAND.orange, fontWeight: 700, fontSize: 14, margin: 0 }}>Reading your log…</p><div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 8 }}>{[0,1,2].map(i => <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: BRAND.orange, animation: "pulse 1.2s ease-in-out " + (i*0.4) + "s infinite" }} />)}</div></>
+          : <><div style={{ fontSize: 28, marginBottom: 8 }}>📱</div><p style={{ color: BRAND.offwhite, fontWeight: 700, fontSize: 14, margin: 0 }}>Drop MFP screenshot here</p><p style={{ color: BRAND.muted, fontSize: 12, margin: "4px 0 0" }}>Tap to choose from your photo library — select multiple at once</p></>
+        }
+      </div>
+      {scanError && <div style={{ background: "#E8464622", border: "1px solid #E84646", borderRadius: 10, padding: "10px 14px", color: "#E84646", fontSize: 13, marginBottom: 12 }}>{scanError}</div>}
+      {meals.map(meal => (
+        <div key={meal.id} style={S.card}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <input value={meal.name} onChange={e => updateMeal(meal.id, "name", e.target.value)}
+              style={{ ...S.input, flex: 1, marginRight: 10, padding: "8px 12px", fontSize: 15, fontWeight: 700, background: "transparent", border: "none", borderBottom: "1px solid #333" }} />
+            {meals.length > 1 && <button type="button" onClick={() => removeMeal(meal.id)} style={{ background: "none", border: "none", color: BRAND.muted, cursor: "pointer", fontSize: 18, padding: 4 }}>✕</button>}
+          </div>
+          <textarea value={meal.items} onChange={e => updateMeal(meal.id, "items", e.target.value)}
+            placeholder="e.g. 6oz chicken breast, 1 cup white rice, broccoli, 1 tsp olive oil"
+            rows={3} style={{ ...S.input, resize: "vertical", lineHeight: 1.6 }} />
+        </div>
+      ))}
+      <button type="button" onClick={addMeal} style={{ ...S.btn, background: "transparent", border: "1.5px dashed " + BRAND.orange, color: BRAND.orange, marginBottom: 12 }}>+ Add Meal</button>
+      {error && <div style={{ background: "#E8464622", border: "1px solid #E84646", borderRadius: 10, padding: "12px 14px", color: "#E84646", fontSize: 13, marginBottom: 12 }}>{error}</div>}
+      <button type="button" style={{ ...S.btn, opacity: loading ? 0.7 : 1 }} onClick={analyze} disabled={loading}>{loading ? "Analyzing…" : "Analyze My Meals ✦"}</button>
+      <div style={{ ...S.card, marginTop: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+          <span style={{ ...S.label, margin: 0 }}>Today's Target</span>
+          <span style={{ fontSize: 12, color: BRAND.orange, fontWeight: 700 }}>{targets.calories} cal</span>
+        </div>
+        <MacroBar label="Protein" value={targets.protein} max={targets.protein} color="#4CAF82" />
+        <MacroBar label="Carbs" value={targets.carbs} max={targets.carbs} color={BRAND.orange} />
+        <MacroBar label="Fat" value={targets.fat} max={targets.fat} color="#9B6EE8" />
+        {medications.length > 0 && <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 4 }}>{medications.map(m => <Tag key={m}>{m}</Tag>)}</div>}
+      </div>
+      <Nav />
+    </div>
+  );
+
+  // ── RESULTS ────────────────────────────────────────────────────────────────
+  if (screen === "results") return (
+    <div style={S.screen}>
+      <div style={S.header}>
+        <h1 style={S.h1}>Meal Analysis</h1>
+        <p style={S.sub}>Two options per swap. You pick.</p>
+      </div>
+      {!results
+        ? <div style={{ ...S.card, textAlign: "center", padding: 40 }}>
+            <p style={{ color: BRAND.muted, fontSize: 14 }}>No analysis yet.</p>
+            <button type="button" style={{ ...S.btn, marginTop: 16, width: "auto", padding: "12px 24px" }} onClick={() => setScreen("log")}>Log Meals →</button>
+          </div>
+        : <>
+            <div style={{ ...S.card, borderLeft: "3px solid " + BRAND.orange }}>
+              <p style={{ color: BRAND.offwhite, fontSize: 14, lineHeight: 1.7, margin: 0 }}>{results.summary}</p>
+            </div>
+            {results.flags && results.flags.length > 0 && (
+              <div style={{ ...S.card, borderLeft: "3px solid #E84646" }}>
+                <span style={{ ...S.label, color: "#E84646", marginBottom: 8, display: "block" }}>⚠ Flags</span>
+                {results.flags.map((f, i) => <div key={i} style={{ fontSize: 13, color: "#F5C0C0", marginBottom: 4, paddingLeft: 4 }}>• {f}</div>)}
+              </div>
+            )}
+            {results.score && (
+              <div style={S.card}>
+                <span style={S.label}>Macro Alignment Score</span>
+                <div style={{ display: "flex", justifyContent: "space-around", paddingTop: 8 }}>
+                  <ScoreRing value={results.score.protein} label="Protein" />
+                  <ScoreRing value={results.score.carbs} label="Carbs" />
+                  <ScoreRing value={results.score.fat} label="Fat" />
+                  <ScoreRing value={results.score.overall} label="Overall" />
+                </div>
+              </div>
+            )}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+                <span style={S.label}>Meal-by-Meal</span>
+                <span style={{ fontSize: 11, color: BRAND.muted, fontStyle: "italic" }}>Two options. You pick.</span>
+              </div>
+              {results.meals && results.meals.map((m, i) => <SwapCard key={i} swap={m} />)}
+            </div>
+            {results.alternative_meals && results.alternative_meals.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <span style={{ ...S.label, display: "block", marginBottom: 10 }}>5 Meals That Fit Your Targets</span>
+                {results.alternative_meals.map((meal, i) => {
+                  const scoreCol = meal.fit_score >= 80 ? "#4CAF82" : meal.fit_score >= 55 ? BRAND.orange : "#E84646";
+                  return (
+                    <div key={i} style={{ ...S.card, borderLeft: "3px solid " + scoreCol, marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <div style={{ flex: 1, marginRight: 10 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 800, color: scoreCol }}>{"#" + meal.rank}</span>
+                            <span style={{ fontWeight: 800, fontSize: 14, color: BRAND.offwhite }}>{meal.name}</span>
+                          </div>
+                          <p style={{ fontSize: 12, color: BRAND.muted, margin: "0 0 6px", lineHeight: 1.5 }}>{meal.description}</p>
+                          <p style={{ fontSize: 11, color: scoreCol, margin: 0, lineHeight: 1.5 }}>{meal.why}</p>
+                        </div>
+                        <SmallRing value={meal.fit_score} />
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+                        {[["Cal", meal.calories, BRAND.orange],["Pro", meal.protein + "g", "#4CAF82"],["Carb", meal.carbs + "g", BRAND.orange],["Fat", meal.fat + "g", "#9B6EE8"]].map(([lbl, val, col]) => (
+                          <div key={lbl} style={{ background: "#252525", borderRadius: 8, padding: "8px 6px", textAlign: "center" }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: col }}>{val}</div>
+                            <div style={{ fontSize: 10, color: BRAND.muted, textTransform: "uppercase", letterSpacing: "0.05em" }}>{lbl}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <button type="button" style={S.btn} onClick={() => { setResults(null); setMeals([{id:uid(),name:"Meal 1",items:""},{id:uid(),name:"Meal 2",items:""},{id:uid(),name:"Meal 3",items:""}]); setScreen("log"); }}>
+              Start a New Day
+            </button>
+          </>
+      }
+      <Nav />
+    </div>
+  );
+
+  // ── RESTAURANT ────────────────────────────────────────────────────────────
+  if (screen === "restaurant") return (
+    <div style={S.screen}>
+      <div style={S.header}>
+        <div style={{ fontSize: 11, letterSpacing: "0.15em", color: BRAND.orange, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Eating Out</div>
+        <h1 style={S.h1}>Find Your<br />Best Order</h1>
+        <p style={S.sub}>Type the restaurant and what you are thinking — we find what fits your macros.</p>
+      </div>
+      <div style={S.card}>
+        <div style={{ marginBottom: 12 }}>
+          <span style={S.label}>Restaurant</span>
+          <input style={S.input} placeholder="e.g. Chipotle, Chick-fil-A, Olive Garden" value={restaurant} onChange={e => setRestaurant(e.target.value)} />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <span style={S.label}>What are you thinking of ordering?</span>
+          <input style={S.input} placeholder="e.g. a burrito bowl, something with chicken, anything high protein" value={orderQuery} onChange={e => setOrderQuery(e.target.value)} />
+        </div>
+        {restError && <div style={{ background: "#E8464622", border: "1px solid #E84646", borderRadius: 10, padding: "10px 14px", color: "#E84646", fontSize: 13, marginBottom: 12 }}>{restError}</div>}
+        <button type="button" onClick={doRestaurantLookup} style={{ ...S.btn, opacity: restLoading ? 0.7 : 1 }} disabled={restLoading}>
+          {restLoading ? loadingMsg || "Looking up menu…" : "Find Best Options ✦"}
+        </button>
+        {restLoading && (
+          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 14 }}>
+            {[0,1,2].map(i => (
+              <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: BRAND.orange, opacity: 0.3, animation: "pulse 1.2s ease-in-out " + (i * 0.4) + "s infinite" }} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {restResults && (
+        <>
+          {restResults.searched_item && restResults.searched_item.name && (
+            <div style={{ ...S.card, borderLeft: "3px solid #9B6EE8" }}>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9B6EE8", marginBottom: 8 }}>You searched for</div>
+              <div style={{ fontWeight: 800, fontSize: 16, color: BRAND.offwhite, marginBottom: 10 }}>{restResults.searched_item.name}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 8 }}>
+                {[["Cal", restResults.searched_item.calories, BRAND.orange],["Pro", restResults.searched_item.protein + "g", "#4CAF82"],["Carb", restResults.searched_item.carbs + "g", BRAND.orange],["Fat", restResults.searched_item.fat + "g", "#9B6EE8"]].map(([lbl, val, col]) => (
+                  <div key={lbl} style={{ background: "#252525", borderRadius: 8, padding: "8px 6px", textAlign: "center" }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: col }}>{val}</div>
+                    <div style={{ fontSize: 10, color: BRAND.muted, textTransform: "uppercase", letterSpacing: "0.05em" }}>{lbl}</div>
+                  </div>
+                ))}
+              </div>
+              {restResults.searched_item.note && <p style={{ fontSize: 12, color: BRAND.muted, margin: 0, lineHeight: 1.5 }}>{restResults.searched_item.note}</p>}
+            </div>
+          )}
+          <div style={{ ...S.card, borderLeft: "3px solid " + BRAND.orange }}>
+            <p style={{ color: BRAND.offwhite, fontSize: 14, lineHeight: 1.7, margin: 0 }}>{restResults.summary}</p>
+          </div>
+          <span style={{ ...S.label, display: "block", marginBottom: 10 }}>Top 5 Options — Ranked by Macro Fit</span>
+          {restResults.options && restResults.options.map((opt, i) => {
+            const scoreCol = opt.fit_score >= 80 ? "#4CAF82" : opt.fit_score >= 55 ? BRAND.orange : "#E84646";
+            return (
+              <div key={i} style={{ ...S.card, borderLeft: "3px solid " + scoreCol }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                  <div style={{ flex: 1, marginRight: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: scoreCol, letterSpacing: "0.08em" }}>{"#" + opt.rank}</span>
+                      <span style={{ fontWeight: 800, fontSize: 15, color: BRAND.offwhite }}>{opt.name}</span>
+                    </div>
+                    <p style={{ fontSize: 12, color: BRAND.muted, margin: 0, lineHeight: 1.5 }}>{opt.fit_note}</p>
+                  </div>
+                  <SmallRing value={opt.fit_score} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: opt.modification ? 10 : 0 }}>
+                  {[["Cal", opt.calories, BRAND.orange],["Pro", opt.protein + "g", "#4CAF82"],["Carb", opt.carbs + "g", BRAND.orange],["Fat", opt.fat + "g", "#9B6EE8"]].map(([lbl, val, col]) => (
+                    <div key={lbl} style={{ background: "#252525", borderRadius: 8, padding: "8px 6px", textAlign: "center" }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: col }}>{val}</div>
+                      <div style={{ fontSize: 10, color: BRAND.muted, textTransform: "uppercase", letterSpacing: "0.05em" }}>{lbl}</div>
+                    </div>
+                  ))}
+                </div>
+                {opt.modification && (
+                  <div style={{ marginTop: 10, padding: "8px 12px", background: "#252525", borderRadius: 8, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>💡</span>
+                    <span style={{ fontSize: 12, color: BRAND.offwhite, lineHeight: 1.5 }}>{opt.modification}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <button type="button" style={{ ...S.btn, background: "transparent", border: "1.5px solid #333", color: BRAND.muted, marginBottom: 16 }}
+            onClick={() => { setRestResults(null); setRestaurant(""); setOrderQuery(""); }}>
+            Search Again
+          </button>
+        </>
+      )}
+      <Nav />
+    </div>
+  );
+
+  // ── COOKBOOK ──────────────────────────────────────────────────────────────
+  // ── PROFILE ────────────────────────────────────────────────────────────────
+  if (screen === "profile") return (
+    <div style={S.screen}>
+      <div style={S.header}>
+        <div style={{ fontSize: 11, letterSpacing: "0.15em", color: BRAND.orange, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>My Profile</div>
+        <h1 style={S.h1}>Client Profile</h1>
+        <p style={S.sub}>Fill this out once. It saves to your device and you can export it to share with Derek.</p>
+      </div>
+
+      <div style={S.card}>
+        <span style={S.label}>Your Name</span>
+        <input style={S.input} placeholder="First and last name" value={profile.name || ""} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} />
+      </div>
+
+      <div style={S.card}>
+        <span style={S.label}>Your Stats</span>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+          <div>
+            <span style={{ ...S.label, marginBottom: 4 }}>Age</span>
+            <input style={S.input} type="number" placeholder="35" value={stats.age} onChange={e => setStats(s => ({ ...s, age: e.target.value }))} />
+          </div>
+          <div>
+            <span style={{ ...S.label, marginBottom: 4 }}>Weight (lbs)</span>
+            <input style={S.input} type="number" placeholder="185" value={stats.weight} onChange={e => setStats(s => ({ ...s, weight: e.target.value }))} />
+          </div>
+        </div>
+        <div style={{ marginBottom: 10 }}>
+          <span style={S.label}>Height</span>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <input style={S.input} type="number" placeholder="Feet" value={stats.height_ft} onChange={e => setStats(s => ({ ...s, height_ft: e.target.value }))} />
+            <input style={S.input} type="number" placeholder="Inches" value={stats.height_in} onChange={e => setStats(s => ({ ...s, height_in: e.target.value }))} />
+          </div>
+        </div>
+        <span style={S.label}>Biological Sex</span>
+        <div style={{ display: "flex", gap: 8 }}>
+          {["male","female"].map(s => (
+            <button type="button" key={s} onClick={() => setStats(st => ({ ...st, sex: s }))}
+              style={{ flex: 1, padding: 10, borderRadius: 10, border: "1.5px solid " + (stats.sex === s ? BRAND.orange : "#333"), background: stats.sex === s ? BRAND.orange + "22" : "#252525", color: stats.sex === s ? BRAND.orange : BRAND.offwhite, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={S.card}>
+        <span style={S.label}>Goal</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {GOALS.map(g => (
+            <button type="button" key={g.id} onClick={() => { setGoal(g.id); }}
+              style={{ background: goal === g.id ? BRAND.orange + "22" : "#252525", border: "1.5px solid " + (goal === g.id ? BRAND.orange : "#333"), borderRadius: 10, padding: "10px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
+              <span style={{ fontSize: 20 }}>{g.icon}</span>
+              <div>
+                <div style={{ fontWeight: 800, color: goal === g.id ? BRAND.orange : BRAND.offwhite, fontSize: 14 }}>{g.label}</div>
+                <div style={{ fontSize: 12, color: BRAND.muted }}>{g.desc}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={S.card}>
+        <span style={S.label}>Activity Level</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {[["sedentary","Sedentary — desk job, little movement"],["light","Lightly Active — 1–3 days/week"],["moderate","Moderately Active — 3–5 days/week"],["very","Very Active — 6–7 days/week"]].map(([key, lbl]) => (
+            <button type="button" key={key} onClick={() => setActivity(key)}
+              style={{ padding: "10px 12px", borderRadius: 10, border: "1.5px solid " + (activity === key ? BRAND.orange : "#333"), background: activity === key ? BRAND.orange + "22" : "#252525", color: activity === key ? BRAND.orange : BRAND.offwhite, fontWeight: activity === key ? 700 : 400, fontSize: 13, cursor: "pointer", textAlign: "left" }}>
+              {lbl}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={S.card}>
+        <span style={S.label}>Medications / Protocols</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {["HRT — Testosterone","HRT — Estrogen / Progesterone","GLP-1 (Ozempic / Wegovy / Mounjaro)","Other peptide protocol"].map(med => (
+            <button type="button" key={med} onClick={() => toggleMed(med)}
+              style={{ background: medications.includes(med) ? BRAND.orange + "22" : "#252525", border: "1.5px solid " + (medications.includes(med) ? BRAND.orange : "#333"), borderRadius: 10, padding: "10px 14px", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ width: 16, height: 16, borderRadius: 4, border: "2px solid " + (medications.includes(med) ? BRAND.orange : "#555"), background: medications.includes(med) ? BRAND.orange : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 11, color: "#fff" }}>{medications.includes(med) ? "✓" : ""}</span>
+              <span style={{ fontSize: 13, color: medications.includes(med) ? BRAND.orange : BRAND.offwhite, fontWeight: medications.includes(med) ? 700 : 400 }}>{med}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={S.card}>
+        <span style={S.label}>Training Schedule</span>
+        <textarea style={{ ...S.input, resize: "vertical", lineHeight: 1.6 }} rows={3}
+          placeholder="e.g. Mon/Wed/Fri upper body, Tue/Thu lower body, weekends off"
+          value={profile.training || ""} onChange={e => setProfile(p => ({ ...p, training: e.target.value }))} />
+      </div>
+
+      <div style={S.card}>
+        <span style={S.label}>Daily Targets</span>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+          {["protein","carbs","fat"].map(m => (
+            <div key={m} style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: BRAND.offwhite }}>{targets[m]}g</div>
+              <div style={{ fontSize: 11, color: BRAND.muted }}>{m}</div>
+            </div>
+          ))}
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: BRAND.orange }}>{targets.calories}</div>
+            <div style={{ fontSize: 11, color: BRAND.muted }}>cal</div>
+          </div>
+        </div>
+        <p style={{ fontSize: 12, color: BRAND.muted, margin: 0, lineHeight: 1.5 }}>Set in Setup. Update there to change these.</p>
+      </div>
+
+      <div style={S.card}>
+        <span style={S.label}>Notes for Derek</span>
+        <textarea style={{ ...S.input, resize: "vertical", lineHeight: 1.6 }} rows={4}
+          placeholder="Anything else Derek should know — injuries, food preferences, lifestyle factors, questions…"
+          value={profile.notes || ""} onChange={e => setProfile(p => ({ ...p, notes: e.target.value }))} />
+      </div>
+
+      <button type="button" style={S.btn} onClick={saveProfile}>
+        {profileSaved ? "✓ Profile Saved" : "Save Profile"}
+      </button>
+
+      <button type="button" onClick={exportProfile}
+        style={{ ...S.btn, background: "transparent", border: "1.5px solid " + BRAND.orange, color: BRAND.orange, marginTop: 12 }}>
+        Export Profile for Derek ↓
+      </button>
+
+      <p style={{ fontSize: 11, color: BRAND.muted, textAlign: "center", marginTop: 12, lineHeight: 1.6, paddingBottom: 8 }}>
+        Profile saves to this device. Export creates a text file you can email or message to derek@freethemacro.com
+      </p>
+
+      <Nav />
+    </div>
+  );
+
+  if (screen === "cookbook") return (
+    <div style={S.screen}>
+      <div style={S.header}>
+        <div style={{ fontSize: 11, letterSpacing: "0.15em", color: BRAND.orange, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Maggie's Kitchen</div>
+        <h1 style={S.h1}>Recipe Library</h1>
+        <p style={S.sub}>Aligned meals. Real food. No compromise on flavor.</p>
+      </div>
+      <input style={{ ...S.input, marginBottom: 16 }} placeholder="Search recipes or tags…" value={cookbookSearch} onChange={e => setCookbookSearch(e.target.value)} />
+      {filteredRecipes.length === 0
+        ? <div style={{ ...S.card, textAlign: "center", padding: 40 }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>📖</div>
+            <p style={{ fontWeight: 800, color: BRAND.offwhite, fontSize: 16, marginBottom: 8 }}>Recipes Coming Soon</p>
+            <p style={{ color: BRAND.muted, fontSize: 13, lineHeight: 1.6 }}>Maggie's cookbook is being added. Each recipe will show macros, ingredients, and goal tags.</p>
+          </div>
+        : filteredRecipes.map((r, i) => <CookbookCard key={i} recipe={r} />)
+      }
+      <Nav />
+    </div>
+  );
+
+  return null;
+}
+
+ReactDOM.render(<PinGate><HamApp /></PinGate>, document.getElementById("root"));
+</script>
+</body>
+</html>
