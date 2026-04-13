@@ -624,10 +624,11 @@ function HamApp() {
         system: sysMsg,
         messages: [{ role: "user", content: userMsg }]
       });
+      console.log("API response:", JSON.stringify(data).substring(0, 200));
       const text = data.content?.find(b => b.type === "text")?.text || "{}";
       const parsed = JSON.parse(text.replace(/\u0060\u0060\u0060json|\u0060\u0060\u0060/g, "").trim());
       setShopList(parsed);
-    } catch { setShopError("Could not generate list. Try again."); }
+    } catch(e) { setShopError("Error: " + (e && e.message ? e.message : JSON.stringify(e))); console.error("Shop error:", e); }
     clearInterval(t);
     setShopLoadingMsg("");
     setShopLoading(false);
