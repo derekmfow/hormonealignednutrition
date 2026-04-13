@@ -113,13 +113,9 @@ function gramsToCalPct(g, macro, cal) {
 const DEREK_INGREDIENTS = "DEREK APPROVED LIST: Proteins: 93/7 grass-fed beef (L2), chicken breast, turkey, canned tuna (L1), tuna steak (L2), eggs, egg whites (fast-digesting, great for GLP-1), Greek yogurt full-fat or fat-free, kefir. Dairy/Fat: real butter (L2), ghee (L2), fat-free cheese (L1), Parmigiano-Reggiano block self-shredded (L2, no anti-caking agents). Carbs: white/jasmine/black rice, Einkhorn wheat flour (L2), Zego oats (L2), cream of rice, homemade sourdough (L2), clean-label wraps/taco shells (L1), pan-popped popcorn NOT bag (L2). Fruits: berries, bananas (pre/post workout), pineapple. Condiments: Siete seasonings (L2), single-ingredient spices (L2), monk fruit powder, maple syrup (moderation), PB Fit (L1). Gut health: sauerkraut, kefir. Sweets: low-cal options with clean sweeteners (no maltitol/sorbitol). SWAP RULE: Always offer L1 easy switch AND L2 less processed. Never say healthier. Say less processed. Client picks — curiosity not compliance.";
 
 async function apiCall(payload) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("/api/claude", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_KEY,
-      "anthropic-version": "2023-06-01"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
   return res.json();
