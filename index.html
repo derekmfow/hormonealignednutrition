@@ -146,7 +146,7 @@ async function analyzeMeals(meals, goal, targets, medications) {
   const mealList = meals.map((m, i) => "Meal " + (i+1) + " — " + m.name + ": " + m.items).join("\n");
   const userMsg = "Goal: " + goal + "\nTargets: " + targets.protein + "g protein, " + targets.carbs + "g carbs, " + targets.fat + "g fat (" + targets.calories + " cal)\n" + medNote + "\n\nMeals:\n" + mealList + "\n\nAnalyze and return JSON.";
 
-  const sysMsg = "You are the AI coaching engine for Hormone Aligned Macros by Derek Fowler — 16-year nutrition coach specializing in HRT and GLP-1 clients who lift weights.\n\nCORE RULES:\n- MACRO COMPLIANCE IS THE FIRST PRIORITY. Hitting targets = a WIN. Celebrate it.\n- Only suggest swaps when something is genuinely off. Never manufacture suggestions.\n- Derek's method: gradual ingredient reduction toward single-ingredient whole foods while keeping meals intact and tasting good. Long-term process. Do not rush.\n- If macros are on target and food is reasonable, return strong status with empty swaps. Acknowledge the win.\n- Never say healthier. Say less processed.\n- Protein minimum 1g per lb bodyweight daily. In deficit 1.1-1.3g. Minimum 30g every 4 hours.\n- If any meal under 30g protein that is the first fix. Flag it.\n- Never cut protein to hit calories.\n\nHRT: increased appetite first 1-3 months is normal. May need more carbs/protein. Do not aggressively cut during stabilization.\nGLP-1: hunger suppressed pharmacologically. Must hit protein even with no appetite. Avoid high-fat high-volume combos. Fast-digesting proteins for low appetite.\n\n" + DEREK_INGREDIENTS + "\n\nDUAL SWAP FORMAT: Every swap offers two options:\n- swap_easy: Level 1 easy switch\n- swap_clean: Level 2 less processed\nOnly include swaps when genuinely needed.\n\nOUTPUT valid JSON only:\n{\"summary\":\"2-3 sentences. Lead with congratulations if macros on target. Lead with biggest fix if off. Never say healthier.\",\"flags\":[\"urgent issues only\"],\"score\":{\"protein\":0,\"carbs\":0,\"fat\":0,\"overall\":0} — ALL SCORES ARE 0-100. Never use 1-10 scale. 100 = perfect target hit. 80+ = strong. 55-79 = aligned. Below 55 = needs work.,\"meals\":[{\"meal\":\"name\",\"status\":\"needs_work|aligned|strong\",\"note\":\"1-2 sentences\",\"swaps\":[{\"swap_out\":\"ingredient\",\"why\":\"reason\",\"swap_easy\":{\"name\":\"...\",\"note\":\"...\",\"impact\":\"...\"},\"swap_clean\":{\"name\":\"...\",\"note\":\"...\",\"impact\":\"...\"}}]}]}";
+  const sysMsg = "You are the AI coaching engine for Hormone Aligned Macros by Derek Fowler — 16-year nutrition coach specializing in HRT and GLP-1 clients who lift weights.\n\nCORE RULES:\n- MACRO COMPLIANCE IS THE FIRST PRIORITY. Hitting targets = a WIN. Celebrate it.\n- Only suggest swaps when something is genuinely off. Never manufacture suggestions.\n- Derek's method: gradual ingredient reduction toward single-ingredient whole foods while keeping meals intact and tasting good. Long-term process. Do not rush.\n- If macros are on target and food is reasonable, return strong status with empty swaps. Acknowledge the win.\n- Never say healthier. Say less processed.\n- Protein minimum 1g per lb bodyweight daily. In deficit 1.1-1.3g. Minimum 30g every 4 hours.\n- If any meal under 30g protein that is the first fix. Flag it.\n- Never cut protein to hit calories.\n\nHRT: increased appetite first 1-3 months is normal. May need more carbs/protein. Do not aggressively cut during stabilization.\nGLP-1: hunger suppressed pharmacologically. Must hit protein even with no appetite. Avoid high-fat high-volume combos. Fast-digesting proteins for low appetite.\n\n" + DEREK_INGREDIENTS + "\n\nDUAL SWAP FORMAT: Every swap offers two options:\n- swap_easy: Level 1 easy switch\n- swap_clean: Level 2 less processed\nOnly include swaps when genuinely needed.\n\nOUTPUT valid JSON only:\n{\"summary\":\"2-3 sentences. Lead with congratulations if macros on target. Lead with biggest fix if off. Never say healthier.\",\"flags\":[\"urgent issues only\"],\"score\":{\"protein\":0,\"carbs\":0,\"fat\":0,\"overall\":0},\"meals\":[{\"meal\":\"name\",\"status\":\"needs_work|aligned|strong\",\"note\":\"1-2 sentences\",\"swaps\":[{\"swap_out\":\"ingredient\",\"why\":\"reason\",\"swap_easy\":{\"name\":\"...\",\"note\":\"...\",\"impact\":\"...\"},\"swap_clean\":{\"name\":\"...\",\"note\":\"...\",\"impact\":\"...\"}}]}]}";
 
   const data = await apiCall({
     model: "claude-sonnet-4-20250514",
@@ -349,98 +349,6 @@ function CookbookCard({ recipe }) {
   );
 }
 
-// ── Derek's Walmart Cart — Approved Staples ─────────────────────────────
-const DEREK_WALMART_CART = {
-  proteins: [
-    { name: "Freshness Guaranteed Boneless Skinless Chicken Breasts", note: "Family pack · Aisle A31" },
-    { name: "Sanderson Farms Fresh Chicken Wings", note: "Family pack · Aisle A31" },
-    { name: "Marketside Organic Grass-Fed Ground Beef 93/7", note: "Aisle A32 — if OOS grab any 93/7 grass-fed" },
-    { name: "Marketside Grass-Fed Beef Top Sirloin Steak", note: "Aisle A32" },
-    { name: "Marketside Grass-Fed Beef New York Strip Steak", note: "Aisle A32" },
-    { name: "Marketside Grass-Fed Beef Ribeye Steak", note: "Aisle A32" },
-    { name: "Marketside Skinless Wild Caught Ahi Tuna Steak", note: "Aisle A32" },
-    { name: "Great Value Wild Caught Skinless Cod Fillets 2lb", note: "Aisle A32" },
-    { name: "Marketside Frozen Wild Caught Skinless Cod Fish Loins", note: "Aisle A32" },
-    { name: "Great Value Frozen Peeled Tail-On XL Shrimp 12oz", note: "Aisle A32" },
-    { name: "Swanson White Premium Chunk Chicken Breast", note: "Canned · Aisle A10" },
-    { name: "Chomps Grass-Fed Beef Jerky", note: "Aisle A20" },
-  ],
-  dairy_eggs: [
-    { name: "Happy Egg Co Organic Free-Range Brown Eggs 18ct", note: "Aisle A28" },
-    { name: "Great Value 100% Liquid Egg Whites 32oz", note: "Aisle A28" },
-    { name: "FAGE Total 0% Nonfat Plain Greek Yogurt 32oz", note: "Aisle A29" },
-    { name: "Oikos Triple Zero 17g Protein Greek Yogurt Vanilla", note: "Aisle A29" },
-    { name: "Organic Valley Grassmilk Grass-Fed Whole Milk 59oz", note: "Aisle A29" },
-    { name: "Kerrygold Grass-Fed Pure Irish Salted Butter", note: "Aisle A28" },
-    { name: "Great Value Grass-Fed Ghee Clarified Butter 13oz", note: "Aisle A13" },
-    { name: "Servio Grass-Fed Non-GMO Traditional Ghee", note: "Aisle A13" },
-    { name: "Breakstone's Lowfat Cottage Cheese 2%", note: "Aisle A28" },
-    { name: "Kraft Fat Free Natural Cheddar Cheese 7oz", note: "Aisle A31" },
-    { name: "Kraft Fat Free Mozzarella Shredded 7oz", note: "Aisle A31" },
-    { name: "Frigo Cheese Heads Mozzarella String Cheese 36ct", note: "Aisle A31" },
-  ],
-  produce: [
-    { name: "Marketside Fresh Organic Bananas", note: "Aisle AP7" },
-    { name: "Fresh Strawberries 2lb", note: "Aisle AP3" },
-    { name: "Fresh Blueberries 18oz", note: "Aisle AP3" },
-    { name: "Fresh Tomato on the Vine 1.9lb", note: "Aisle AP10" },
-    { name: "Fresh Whole Red Onion", note: "Aisle AP10" },
-    { name: "Sweet Potatoes Whole Fresh 3lb", note: "Aisle AP10" },
-    { name: "Russet Potatoes 10lb bag", note: "Aisle AP10" },
-    { name: "Fresh Sweet Corn on the Cob", note: "Aisle A1" },
-    { name: "Fresh Jalapeño Peppers", note: "Aisle A1" },
-    { name: "Fresh Whole Cilantro 1 bunch", note: "Aisle A1" },
-  ],
-  pantry: [
-    { name: "Golden Star Thai Hom Mali Jasmine Rice 10lb", note: "Aisle A11" },
-    { name: "Banza Spaghetti from Chickpeas", note: "High protein · Aisle A8" },
-    { name: "Banza Penne from Chickpeas", note: "High protein · Aisle A8" },
-    { name: "Banza Rotini from Chickpeas", note: "High protein · Aisle A8" },
-    { name: "Great Value Sourdough Bread 24oz", note: "Aisle A16" },
-    { name: "Arnold Country Style Sourdough Bread 24oz", note: "Aisle A16" },
-    { name: "Pepperidge Farm Farmhouse Sourdough Bread 24oz", note: "Aisle A16" },
-    { name: "Ole Xtreme Wellness High Fiber Keto Tortillas", note: "Aisle A11" },
-    { name: "Orville Redenbacher Popcorn Kernels 45oz", note: "Pan-pop only · Aisle A20" },
-    { name: "Bush's Chili Beans Pinto Beans", note: "Aisle A9" },
-    { name: "Libby's 100% Pure Pumpkin Puree", note: "Aisle A12" },
-  ],
-  condiments: [
-    { name: "Primal Kitchen Organic Unsweetened Ketchup", note: "Aisle A7" },
-    { name: "Chosen Foods Avocado Oil Classic Mayo", note: "Aisle A7" },
-    { name: "BetterBody Foods Avocado Oil Mayonnaise", note: "Aisle A7" },
-    { name: "G Hughes Sugar Free Sweet & Spicy BBQ Sauce", note: "Aisle A7" },
-    { name: "G Hughes Sugar Free Polynesian Dipping Sauce", note: "Aisle A7" },
-    { name: "G Hughes Sugar Free Sweet & Sour Sauce", note: "Aisle A7" },
-    { name: "G Hughes Sugar Free Sweet Chili Sauce", note: "Aisle A7" },
-    { name: "Hidden Valley GF Keto Ranch Seasoning 8oz", note: "Aisle A7" },
-    { name: "Siete Mild Taco Seasoning", note: "Aisle A12" },
-    { name: "Fire & Smoke Society Lemon Pepper Seasoning", note: "Aisle A12" },
-    { name: "McCormick Non-GMO Garlic Powder", note: "Aisle A12" },
-    { name: "McCormick Non-GMO Pure Ground Black Pepper", note: "Aisle A12" },
-    { name: "Baja Gold Mineral Sea Salt 1lb", note: "Aisle A9" },
-    { name: "Butternut Mountain Farm 100% Pure Vermont Maple Syrup", note: "Aisle A14" },
-    { name: "Smucker's Natural Blackberry Fruit Spread", note: "Aisle A17" },
-    { name: "Smucker's Natural Strawberry Fruit Spread", note: "Aisle A17" },
-    { name: "Siete Family Foods Casera Salsa Roja Mild", note: "Aisle A11" },
-    { name: "PBfit No Sugar Added Peanut Butter Powder", note: "Aisle A13" },
-  ],
-  snacks: [
-    { name: "Quest Tortilla Style Protein Chips", note: "Loaded Taco / Ranch / Chili Lime / Nacho · Aisle G36" },
-    { name: "Siete Grain Free Tortilla Chips Sea Salt", note: "Aisle A21" },
-    { name: "Siete Grain Free Churro Cinnamon Chips", note: "Aisle A21" },
-    { name: "Siete Tortilla Chip Hint of Lime", note: "Aisle A21" },
-    { name: "Barebells Protein Bars 20g", note: "Choc Dough / Cookies & Cream / Caramel / Crisp · Aisle G36" },
-    { name: "RXBAR GF Coconut Chocolate 5ct", note: "Aisle A14" },
-    { name: "Core Power Elite 42g Protein Shake", note: "Chocolate & Vanilla · Aisle G36" },
-    { name: "Bake Believe Keto Semi-Sweet Baking Chips", note: "Aisle A12" },
-    { name: "Honey Maid Low Fat Graham Crackers", note: "Aisle A19" },
-    { name: "Breyers CarbSmart Chocolate Ice Cream 48oz", note: "Aisle A2" },
-    { name: "Breyers CarbSmart Vanilla Ice Cream 48oz", note: "Aisle A2" },
-    { name: "Hershey's Simply 5 Chocolate Syrup 21.8oz", note: "Aisle A17" },
-    { name: "Smucker's Sugar Free Concord Grape Jam", note: "Aisle A17" },
-  ],
-};
-
 // ── Main App ──────────────────────────────────────────────────────────────────
 function HamApp() {
   const [screen, setScreen] = useState("setup");
@@ -469,16 +377,11 @@ function HamApp() {
   const [restLoading, setRestLoading] = useState(false);
   const [restResults, setRestResults] = useState(null);
   const [restError, setRestError] = useState(null);
-  const [loggedOptions, setLoggedOptions] = useState({});
   const [profile, setProfile] = useState(() => {
     try { const s = localStorage.getItem("ham_profile"); return s ? JSON.parse(s) : { name: "", training: "", notes: "" }; }
     catch { return { name: "", training: "", notes: "" }; }
   });
   const [profileSaved, setProfileSaved] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(() => {
-    try { const s = localStorage.getItem("ham_profile"); const p = s ? JSON.parse(s) : null; return !p || !p.name; }
-    catch { return true; }
-  });
   const [shopMeals, setShopMeals] = useState([]);
   const [shopInput, setShopInput] = useState("");
   const [shopLoading, setShopLoading] = useState(false);
@@ -668,11 +571,9 @@ function HamApp() {
     { id: "whole_foods", name: "Whole Foods", emoji: "🥦" },
     { id: "costco", name: "Costco", emoji: "📦" },
     { id: "aldi", name: "Aldi", emoji: "💰" },
-    { id: "trader_joes", name: "Trader Joe's", emoji: "🌺" },
-    { id: "amazon_fresh", name: "Amazon Fresh", emoji: "📱" },
+    { id: "trader_joes", name: "Trader Joes", emoji: "🌺" },
     { id: "sprouts", name: "Sprouts", emoji: "🌱" },
   ];
-
   const toggleStore = s => setShopStores(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]);
 
   const PRESET_MEALS = [
@@ -693,7 +594,44 @@ function HamApp() {
     }
   };
 
-
+  const generateShopList = async () => {
+    if (!shopMeals.length) { setShopError("Add at least one meal first."); return; }
+    setShopError(null); setShopLoading(true); setShopList(null);
+    const msgs = ["Finding best ingredients…", "Applying quality standards…", "Organizing by store section…", "Almost done…"];
+    let idx = 0;
+    setShopLoadingMsg(msgs[0]);
+    const t = setInterval(() => { idx = Math.min(idx+1, msgs.length-1); setShopLoadingMsg(msgs[idx]); }, 1800);
+    try {
+      const mealStr = shopMeals.join(", ");
+      const storeNote = shopStores.length ? "Shopping at: " + shopStores.join(", ") + ". Suggest brands available at these stores. " : "";
+      const sysMsg = "You are a nutrition shopping expert for Hormone Aligned Macros by Derek Fowler. "
+        + storeNote
+        + "Generate a CONCISE weekly shopping list. Max 5 items per section, max 6 sections. No redundant items. "
+        + "SELECTION PRIORITY: 1. HIGHEST QUALITY (grass-fed, organic, wild-caught, single-ingredient). "
+        + "2. LOWEST CALORIE when quality is equal. 3. FEWEST INGREDIENTS (shorter label wins). "
+        + "ALWAYS choose: grass-fed beef, free-range eggs, sourdough bread (never regular sandwich bread), "
+        + "jasmine or white rice (not instant), real butter or ghee, Parmigiano-Reggiano block (never pre-shredded), "
+        + "single-ingredient spices, Greek yogurt no added sugar, G Hughes sugar-free sauces over regular. "
+        + "NEVER suggest: bag microwave popcorn, margarine, processed cheese slices, instant oats, seed oils, regular sandwich bread. "
+        + "QUANTITIES: always specific numbers with units (2 lbs, 3 bags, 12 oz, 4 count). Never say pack, handful, bunch. "
+        + "Assign each item one badge: Quality Pick, Low Cal, or Clean Label. "
+        + "Output valid JSON only, no markdown: "
+        + '{"meals":["meal1"],"sections":[{"name":"Section Name","emoji":"emoji","items":[{"name":"item","note":"brand or quality tip","badge":"Quality Pick|Low Cal|Clean Label","quantity":"2 lbs"}]}]}';
+      const userMsg = "Weekly meals: " + mealStr + ". Generate a complete shopping list organized by store section with quality-first ingredient choices.";
+      const data = await apiCall({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        system: sysMsg,
+        messages: [{ role: "user", content: userMsg }]
+      });
+      const text = data.content?.find(b => b.type === "text")?.text || "{}";
+      const parsed = JSON.parse(text.replace(/\u0060\u0060\u0060json|\u0060\u0060\u0060/g, "").trim());
+      setShopList(parsed);
+    } catch { setShopError("Could not generate list. Try again."); }
+    clearInterval(t);
+    setShopLoadingMsg("");
+    setShopLoading(false);
+  };
 
   const downloadShopList = () => {
     if (!shopList) return;
@@ -712,47 +650,6 @@ function HamApp() {
     a.download = "HAM-shopping-list.txt";
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-
-  const generateShopList = async () => {
-    if (!shopMeals.length) { setShopError("Add at least one meal first."); return; }
-    setShopError(null); setShopLoading(true); setShopList(null);
-    const msgs = ["Checking Derek's approved list…", "Matching to your meals…", "Organizing by Walmart aisle…", "Almost done…"];
-    let idx = 0;
-    setShopLoadingMsg(msgs[0]);
-    const t = setInterval(() => { idx = Math.min(idx+1, msgs.length-1); setShopLoadingMsg(msgs[idx]); }, 1200);
-    try {
-      const mealStr = shopMeals.join(", ");
-      const cartStr = JSON.stringify(DEREK_WALMART_CART);
-      const storeNote = shopStores.length ? "Stores selected: " + shopStores.join(", ") + ". " : "";
-      const sysMsg = "You are a nutrition shopping assistant for Hormone Aligned Macros by Derek Fowler. "
-        + storeNote
-        + "Use ONLY items from Derek's approved Walmart staples list below to build a shopping list for the given meals. "
-        + "If an item from the cart clearly fits the meal, include it. If not needed, leave it out. "
-        + "Max 6 items per section, max 6 sections. Use exact product names and aisle locations. "
-        + "SELECTION PRIORITY — apply in this order to every item: "
-        + "1. HIGHEST QUALITY: grass-fed, organic, wild-caught, single-ingredient, least processed always wins. "
-        + "2. LOWEST CALORIE: when two items are equal quality, choose the lower calorie option. "
-        + "3. FEWEST INGREDIENTS: shorter ingredient list beats longer. Fat-free cheese over full-fat when goal allows. Sugar-free sauces over regular. "         + "QUANTITIES: Always use specific numbers with units (2 lbs, 3 bags, 12 oz, 4 count). Never say pack, handful, bunch, some, a few, as needed, or any vague term. "
-        + "For each item assign a badge — exactly one of: 'Quality Pick', 'Low Cal', or 'Clean Label' — based on the primary reason it was chosen. "
-        + "Derek's approved cart: " + cartStr + " "
-        + "Output valid JSON only, no markdown: "
-        + '{"meals":["meal1"],"sections":[{"name":"Section Name","emoji":"emoji","items":[{"name":"exact product name from cart","note":"aisle location","badge":"Quality Pick|Low Cal|Clean Label","quantity":"specific number + unit e.g. 2 lbs, 3 bags, 12 oz, 4 count — never vague terms"}]}]}';
-      const userMsg = "Weekly meals: " + mealStr + ". Build the shopping list using only Derek's approved Walmart items.";
-      const data = await apiCall({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1500,
-        system: sysMsg,
-        messages: [{ role: "user", content: userMsg }]
-      });
-      const text = data.content?.find(b => b.type === "text")?.text || "{}";
-      const parsed = JSON.parse(text.replace(/\u0060\u0060\u0060json|\u0060\u0060\u0060/g,"").trim());
-      setShopList(parsed);
-    } catch(e) { setShopError("Could not generate list. Try again."); }
-    clearInterval(t);
-    setShopLoadingMsg("");
-    setShopLoading(false);
   };
 
   const Nav = () => (
@@ -774,98 +671,6 @@ function HamApp() {
         <h1 style={S.h1}>Hormone Aligned<br />Macros</h1>
         <p style={{ ...S.sub, marginTop: 6 }}>Set your goal. Log meals. Get two swap options. You pick.</p>
       </div>
-
-      {/* Profile card */}
-      {!profileOpen && profile.name ? (
-        <div style={{ background: "#1E1E1E", borderRadius: 14, padding: "12px 16px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", borderLeft: "3px solid " + BRAND.orange }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: BRAND.offwhite, marginBottom: 2 }}>{profile.name}</div>
-            <div style={{ fontSize: 12, color: BRAND.muted }}>
-              {GOALS.find(g => g.id === goal)?.label || goal} · {stats.weight ? stats.weight + " lbs" : ""} {medications.length > 0 ? "· " + medications.map(m => m.split(" — ")[0]).join(", ") : ""}
-            </div>
-          </div>
-          <button type="button" onClick={() => setProfileOpen(true)}
-            style={{ background: "none", border: "1px solid #333", borderRadius: 8, padding: "5px 10px", color: BRAND.muted, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-            Edit
-          </button>
-        </div>
-      ) : profileOpen ? (
-        <div style={{ background: "#1E1E1E", borderRadius: 14, padding: 18, marginBottom: 16, borderLeft: "3px solid " + BRAND.orange }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <span style={{ fontSize: 13, fontWeight: 800, color: BRAND.offwhite }}>
-              {profile.name ? "Edit Profile" : "👋 Set up your profile first"}
-            </span>
-            {profile.name && <button type="button" onClick={() => setProfileOpen(false)}
-              style={{ background: "none", border: "none", color: BRAND.muted, fontSize: 18, cursor: "pointer", padding: 0 }}>✕</button>}
-          </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <span style={S.label}>Your Name</span>
-            <input style={S.input} placeholder="First and last name" value={profile.name || ""}
-              onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-            <div>
-              <span style={S.label}>Age</span>
-              <input style={S.input} type="number" placeholder="35" value={stats.age}
-                onChange={e => setStats(s => ({ ...s, age: e.target.value }))} />
-            </div>
-            <div>
-              <span style={S.label}>Weight (lbs)</span>
-              <input style={S.input} type="number" placeholder="185" value={stats.weight}
-                onChange={e => setStats(s => ({ ...s, weight: e.target.value }))} />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <span style={S.label}>Height</span>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <input style={S.input} type="number" placeholder="Feet" value={stats.height_ft}
-                onChange={e => setStats(s => ({ ...s, height_ft: e.target.value }))} />
-              <input style={S.input} type="number" placeholder="Inches" value={stats.height_in}
-                onChange={e => setStats(s => ({ ...s, height_in: e.target.value }))} />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <span style={S.label}>Biological Sex</span>
-            <div style={{ display: "flex", gap: 8 }}>
-              {["male","female"].map(s => (
-                <button type="button" key={s} onClick={() => setStats(st => ({ ...st, sex: s }))}
-                  style={{ flex: 1, padding: 10, borderRadius: 10, border: "1.5px solid " + (stats.sex === s ? BRAND.orange : "#333"), background: stats.sex === s ? BRAND.orange + "22" : "#252525", color: stats.sex === s ? BRAND.orange : BRAND.offwhite, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 14 }}>
-            <span style={S.label}>Medications / Protocols</span>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {MED_OPTIONS.map(med => (
-                <button type="button" key={med} onClick={() => toggleMed(med)}
-                  style={{ background: medications.includes(med) ? BRAND.orange + "22" : "#252525", border: "1.5px solid " + (medications.includes(med) ? BRAND.orange : "#333"), borderRadius: 10, padding: "9px 12px", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ width: 14, height: 14, borderRadius: 3, border: "2px solid " + (medications.includes(med) ? BRAND.orange : "#555"), background: medications.includes(med) ? BRAND.orange : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 9, color: "#fff" }}>{medications.includes(med) ? "✓" : ""}</span>
-                  <span style={{ fontSize: 12, color: medications.includes(med) ? BRAND.orange : BRAND.offwhite, fontWeight: medications.includes(med) ? 700 : 400 }}>{med}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <button type="button" onClick={() => {
-            saveProfile();
-            setProfileOpen(false);
-          }} style={S.btn}>
-            {profileSaved ? "✓ Saved" : "Save Profile"}
-          </button>
-        </div>
-      ) : (
-        <div style={{ background: "#1E1E1E", borderRadius: 14, padding: "12px 16px", marginBottom: 16, borderLeft: "3px solid " + BRAND.orange, cursor: "pointer" }} onClick={() => setProfileOpen(true)}>
-          <div style={{ fontSize: 13, color: BRAND.orange, fontWeight: 700 }}>👋 Set up your profile first →</div>
-          <div style={{ fontSize: 11, color: BRAND.muted, marginTop: 3 }}>Takes 30 seconds. Improves every recommendation.</div>
-        </div>
-      )}
 
       <div style={S.card}>
         <span style={S.label}>Calculate Your Calories</span>
@@ -1204,30 +1009,11 @@ function HamApp() {
                     <span style={{ fontSize: 12, color: BRAND.offwhite, lineHeight: 1.5 }}>{opt.modification}</span>
                   </div>
                 )}
-                <button type="button"
-                  onClick={() => {
-                    const mealEntry = {
-                      id: uid(),
-                      name: (restResults.restaurant || restaurant) + " — " + opt.name,
-                      items: opt.name + " (tracked macros: " + opt.calories + " calories, " + opt.protein + "g protein, " + opt.carbs + "g carbs, " + opt.fat + "g fat)"
-                    };
-                    setMeals(prev => {
-                      const empty = prev.filter(m => !m.items.trim());
-                      const filled = prev.filter(m => m.items.trim());
-                      return empty.length > 0
-                        ? prev.map(m => m.id === empty[0].id ? mealEntry : m)
-                        : [...filled, mealEntry];
-                    });
-                    setLoggedOptions(p => ({ ...p, [i]: true }));
-                  }}
-                  style={{ marginTop: 10, width: "100%", padding: "10px 0", borderRadius: 10, border: "1.5px solid " + (loggedOptions[i] ? "#4CAF82" : BRAND.orange), background: loggedOptions[i] ? "#4CAF8222" : BRAND.orange + "11", color: loggedOptions[i] ? "#4CAF82" : BRAND.orange, fontWeight: 800, fontSize: 13, cursor: "pointer", transition: "all 0.2s" }}>
-                  {loggedOptions[i] ? "✓ Logged to Today's Meals" : "Log This Meal →"}
-                </button>
               </div>
             );
           })}
           <button type="button" style={{ ...S.btn, background: "transparent", border: "1.5px solid #333", color: BRAND.muted, marginBottom: 16 }}
-            onClick={() => { setRestResults(null); setRestaurant(""); setOrderQuery(""); setLoggedOptions({}); }}>
+            onClick={() => { setRestResults(null); setRestaurant(""); setOrderQuery(""); }}>
             Search Again
           </button>
         </>
@@ -1379,23 +1165,18 @@ function HamApp() {
         <p style={S.sub}>Add your meals for the week. Get a quality-first shopping list organized by store section.</p>
       </div>
 
-      {/* Store picker */}
       <div style={S.card}>
         <span style={S.label}>Where are you shopping?</span>
-        <p style={{ fontSize: 12, color: BRAND.muted, margin: "0 0 10px", lineHeight: 1.5 }}>Pick 1-2 stores. We'll suggest brands you can actually find.</p>
+        <p style={{ fontSize: 12, color: BRAND.muted, margin: "0 0 10px", lineHeight: 1.5 }}>Pick 1-2 stores for brand-specific suggestions.</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {STORES.map(store => (
             <button type="button" key={store.id} onClick={() => toggleStore(store.name)}
-              style={{ padding: "7px 12px", borderRadius: 20, border: "1.5px solid " + (shopStores.includes(store.name) ? BRAND.orange : "#333"), background: shopStores.includes(store.name) ? BRAND.orange + "22" : "#252525", color: shopStores.includes(store.name) ? BRAND.orange : BRAND.muted, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-              <span>{store.emoji}</span><span>{store.name}</span>
+              style={{ padding: "7px 12px", borderRadius: 20, border: "1.5px solid " + (shopStores.includes(store.name) ? BRAND.orange : "#333"), background: shopStores.includes(store.name) ? BRAND.orange + "22" : "#252525", color: shopStores.includes(store.name) ? BRAND.orange : BRAND.muted, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              {store.emoji} {store.name}
             </button>
           ))}
         </div>
-        {shopStores.length > 0 && (
-          <p style={{ fontSize: 11, color: BRAND.orange, margin: "10px 0 0", fontWeight: 700 }}>
-            Shopping at: {shopStores.join(" + ")}
-          </p>
-        )}
+        {shopStores.length > 0 && <p style={{ fontSize: 11, color: BRAND.orange, margin: "10px 0 0", fontWeight: 700 }}>Shopping at: {shopStores.join(" + ")}</p>}
       </div>
 
       {/* Meal input */}
@@ -1471,13 +1252,7 @@ function HamApp() {
                     {item.quantity && <span style={{ fontSize: 11, color: BRAND.muted, marginLeft: 8, flexShrink: 0 }}>{item.quantity}</span>}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    {item.badge && (
-                      <span style={{
-                        fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, letterSpacing: "0.05em",
-                        background: item.badge === "Quality Pick" ? "#4CAF8222" : item.badge === "Low Cal" ? "#9B6EE822" : BRAND.orange + "22",
-                        color: item.badge === "Quality Pick" ? "#4CAF82" : item.badge === "Low Cal" ? "#9B6EE8" : BRAND.orange,
-                      }}>{item.badge}</span>
-                    )}
+                    {item.badge && <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, background: item.badge === "Quality Pick" ? "#4CAF8222" : item.badge === "Low Cal" ? "#9B6EE822" : BRAND.orange + "22", color: item.badge === "Quality Pick" ? "#4CAF82" : item.badge === "Low Cal" ? "#9B6EE8" : BRAND.orange }}>{item.badge}</span>}
                     {item.note && <span style={{ fontSize: 11, color: BRAND.muted, lineHeight: 1.4 }}>{item.note}</span>}
                   </div>
                 </div>
