@@ -740,7 +740,7 @@ function HamApp() {
         + '{"meals":["meal1"],"sections":[{"name":"Section Name","emoji":"emoji","items":[{"name":"exact product name from cart","note":"aisle location","badge":"Quality Pick|Low Cal|Clean Label","quantity":"specific number + unit e.g. 2 lbs, 3 bags, 12 oz, 4 count — never vague terms"}]}]}';
       const userMsg = "Weekly meals: " + mealStr + ". Build the shopping list using only Derek's approved Walmart items.";
       const data = await apiCall({
-        model: "claude-haiku-4-5-20251001",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 1500,
         system: sysMsg,
         messages: [{ role: "user", content: userMsg }]
