@@ -725,9 +725,6 @@ function HamApp() {
       const mealStr = shopMeals.join(", ");
       const cartStr = JSON.stringify(DEREK_WALMART_CART);
       const storeNote = shopStores.length ? "Stores selected: " + shopStores.join(", ") + ". " : "";
-      const storeNote = shopStores.length
-        ? "Stores selected: " + shopStores.join(", ") + ". "
-        : "";
       const sysMsg = "You are a nutrition shopping assistant for Hormone Aligned Macros by Derek Fowler. "
         + storeNote
         + "Use ONLY items from Derek's approved Walmart staples list below to build a shopping list for the given meals. "
