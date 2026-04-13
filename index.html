@@ -137,7 +137,7 @@ async function readScreenshot(base64, mimeType) {
     ]}]
   });
   const text = data.content?.find(b => b.type === "text")?.text || "{}";
-  try { return JSON.parse(text.replace(/```json|```/g, "").trim()); }
+  try { return JSON.parse(text.replace(/\u0060\u0060\u0060json|\u0060\u0060\u0060/g, "").trim()); }
   catch { return null; }
 }
 
@@ -155,7 +155,7 @@ async function analyzeMeals(meals, goal, targets, medications) {
     messages: [{ role: "user", content: userMsg }]
   });
   const text = data.content?.find(b => b.type === "text")?.text || "{}";
-  try { return JSON.parse(text.replace(/```json|```/g, "").trim()); }
+  try { return JSON.parse(text.replace(/\u0060\u0060\u0060json|\u0060\u0060\u0060/g, "").trim()); }
   catch { return null; }
 }
 
@@ -173,7 +173,7 @@ async function lookupRestaurant(restaurant, orderQuery, targets) {
     messages: [{ role: "user", content: userMsg }]
   });
   const text = data.content?.find(b => b.type === "text")?.text || "{}";
-  try { return JSON.parse(text.replace(/```json|```/g, "").trim()); }
+  try { return JSON.parse(text.replace(/\u0060\u0060\u0060json|\u0060\u0060\u0060/g, "").trim()); }
   catch { return null; }
 }
 
@@ -746,7 +746,7 @@ function HamApp() {
         messages: [{ role: "user", content: userMsg }]
       });
       const text = data.content?.find(b => b.type === "text")?.text || "{}";
-      const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+      const parsed = JSON.parse(text.replace(/\u0060\u0060\u0060json|\u0060\u0060\u0060/g,"").trim());
       setShopList(parsed);
     } catch(e) { setShopError("Could not generate list. Try again."); }
     clearInterval(t);
