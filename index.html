@@ -142,7 +142,7 @@ async function analyzeMeals(meals, goal, targets, medications) {
   const mealList = meals.map((m, i) => "Meal " + (i+1) + " — " + m.name + ": " + m.items).join("\n");
   const userMsg = "Goal: " + goal + "\nTargets: " + targets.protein + "g protein, " + targets.carbs + "g carbs, " + targets.fat + "g fat (" + targets.calories + " cal)\n" + medNote + "\n\nMeals:\n" + mealList + "\n\nAnalyze and return JSON.";
 
-  const sysMsg = "You are the AI coaching engine for Hormone Aligned Macros by Derek Fowler — 16-year nutrition coach specializing in HRT and GLP-1 clients who lift weights.\n\nCORE RULES:\n- MACRO COMPLIANCE IS THE FIRST PRIORITY. Hitting targets = a WIN. Celebrate it.\n- Only suggest swaps when something is genuinely off. Never manufacture suggestions.\n- Derek's method: gradual ingredient reduction toward single-ingredient whole foods while keeping meals intact and tasting good. Long-term process. Do not rush.\n- If macros are on target and food is reasonable, return strong status with empty swaps. Acknowledge the win.\n- Never say healthier. Say less processed.\n- Protein minimum 1g per lb bodyweight daily. In deficit 1.1-1.3g. Minimum 30g every 4 hours.\n- If any meal under 30g protein that is the first fix. Flag it.\n- Never cut protein to hit calories.\n\nHRT: increased appetite first 1-3 months is normal. May need more carbs/protein. Do not aggressively cut during stabilization.\nGLP-1: hunger suppressed pharmacologically. Must hit protein even with no appetite. Avoid high-fat high-volume combos. Fast-digesting proteins for low appetite.\n\n" + DEREK_INGREDIENTS + "\n\nDUAL SWAP FORMAT: Every swap offers two options:\n- swap_easy: Level 1 easy switch\n- swap_clean: Level 2 less processed\nOnly include swaps when genuinely needed.\n\nOUTPUT valid JSON only:\n{\"summary\":\"2-3 sentences. Lead with congratulations if macros on target. Lead with biggest fix if off. Never say healthier.\",\"flags\":[\"urgent issues only\"],\"score\":{\"protein\":0,\"carbs\":0,\"fat\":0,\"overall\":0} — IMPORTANT: ALL score values must be 0-100 scale. Never use 1-10. 100 = perfect. 80+ = strong. 55-79 = aligned. Below 55 = needs work.,\"meals\":[{\"meal\":\"name\",\"status\":\"needs_work|aligned|strong\",\"note\":\"1-2 sentences\",\"swaps\":[{\"swap_out\":\"ingredient\",\"why\":\"reason\",\"swap_easy\":{\"name\":\"...\",\"note\":\"...\",\"impact\":\"...\"},\"swap_clean\":{\"name\":\"...\",\"note\":\"...\",\"impact\":\"...\"}}]}]}";
+  const sysMsg = "You are the AI coaching engine for Hormone Aligned Macros by Derek Fowler — 16-year nutrition coach specializing in HRT and GLP-1 clients who lift weights.\n\nCORE RULES:\n- MACRO COMPLIANCE IS THE FIRST PRIORITY. Hitting targets = a WIN. Celebrate it.\n- Only suggest swaps when something is genuinely off. Never manufacture suggestions.\n- Derek's method: gradual ingredient reduction toward single-ingredient whole foods while keeping meals intact and tasting good. Long-term process. Do not rush.\n- If macros are on target and food is reasonable, return strong status with empty swaps. Acknowledge the win.\n- Never say healthier. Say less processed.\n- Protein minimum 1g per lb bodyweight daily. In deficit 1.1-1.3g. Minimum 30g every 4 hours.\n- If any meal under 30g protein that is the first fix. Flag it.\n- Never cut protein to hit calories.\n\nHRT: increased appetite first 1-3 months is normal. May need more carbs/protein. Do not aggressively cut during stabilization.\nGLP-1: hunger suppressed pharmacologically. Must hit protein even with no appetite. Avoid high-fat high-volume combos. Fast-digesting proteins for low appetite.\n\n" + DEREK_INGREDIENTS + "\n\nDUAL SWAP FORMAT: Every swap offers two options:\n- swap_easy: Level 1 easy switch\n- swap_clean: Level 2 less processed\nOnly include swaps when genuinely needed.\n\nOUTPUT valid JSON only:\n{\"summary\":\"2-3 sentences. Lead with congratulations if macros on target. Lead with biggest fix if off. Never say healthier.\",\"flags\":[\"urgent issues only\"],\"score\":{\"protein\":0,\"carbs\":0,\"fat\":0,\"overall\":0} — ALL scores are 0-100 scale only. Never 1-10. 100=perfect, 80+=strong, 55-79=aligned, below 55=needs work. — IMPORTANT: ALL score values must be 0-100 scale. Never use 1-10. 100 = perfect. 80+ = strong. 55-79 = aligned. Below 55 = needs work.,\"meals\":[{\"meal\":\"name\",\"status\":\"needs_work|aligned|strong\",\"note\":\"1-2 sentences\",\"swaps\":[{\"swap_out\":\"ingredient\",\"why\":\"reason\",\"swap_easy\":{\"name\":\"...\",\"note\":\"...\",\"impact\":\"...\"},\"swap_clean\":{\"name\":\"...\",\"note\":\"...\",\"impact\":\"...\"}}]}]}";
 
   const data = await apiCall({
     model: "claude-sonnet-4-20250514",
@@ -373,11 +373,69 @@ function HamApp() {
   const [restLoading, setRestLoading] = useState(false);
   const [restResults, setRestResults] = useState(null);
   const [restError, setRestError] = useState(null);
-  const [profile, setProfile] = useState(() => {
-    try { const s = localStorage.getItem("ham_profile"); return s ? JSON.parse(s) : { name: "", training: "", notes: "" }; }
-    catch { return { name: "", training: "", notes: "" }; }
-  });
+  const [profile, setProfile] = useState({ name: "", training: "", notes: "" });
   const [profileSaved, setProfileSaved] = useState(false);
+  const [profileCode, setProfileCode] = useState("");
+  const [profileCodeInput, setProfileCodeInput] = useState("");
+  const [profileStatus, setProfileStatus] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  const saveProfileToServer = async () => {
+    if (!profileCode.trim() || profileCode.trim().length < 3) {
+      setProfileStatus({ type: "error", msg: "Code must be at least 3 characters." });
+      return;
+    }
+    setProfileLoading(true);
+    try {
+      const full = { ...profile, goal, targets, medications, stats, activity };
+      const res = await fetch("/api/profile/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: profileCode.trim(), profile: full })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProfileStatus({ type: "success", msg: "Profile saved! Your code is: " + profileCode.trim() });
+        setProfileSaved(true);
+        setTimeout(() => setProfileSaved(false), 3000);
+      } else {
+        setProfileStatus({ type: "error", msg: data.error || "Could not save profile." });
+      }
+    } catch(e) {
+      setProfileStatus({ type: "error", msg: "Connection error. Try again." });
+    }
+    setProfileLoading(false);
+  };
+
+  const loadProfileFromServer = async () => {
+    if (!profileCodeInput.trim()) return;
+    setProfileLoading(true);
+    setProfileStatus(null);
+    try {
+      const res = await fetch("/api/profile/load", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: profileCodeInput.trim() })
+      });
+      const data = await res.json();
+      if (data.success && data.profile) {
+        const p = data.profile;
+        setProfile({ name: p.name || "", training: p.training || "", notes: p.notes || "" });
+        if (p.goal) setGoal(p.goal);
+        if (p.targets) setTargets(p.targets);
+        if (p.medications) setMedications(p.medications);
+        if (p.stats) setStats(p.stats);
+        if (p.activity) setActivity(p.activity);
+        setProfileCode(profileCodeInput.trim());
+        setProfileStatus({ type: "success", msg: "Profile loaded." });
+      } else {
+        setProfileStatus({ type: "error", msg: "No profile found for that code." });
+      }
+    } catch(e) {
+      setProfileStatus({ type: "error", msg: "Connection error. Try again." });
+    }
+    setProfileLoading(false);
+  };
   const [shopMeals, setShopMeals] = useState([]);
   const [shopInput, setShopInput] = useState("");
   const [shopLoading, setShopLoading] = useState(false);
@@ -386,50 +444,8 @@ function HamApp() {
   const [shopLoadingMsg, setShopLoadingMsg] = useState("");
   const [shopStores, setShopStores] = useState([]);
 
-  const saveProfile = () => {
-    try {
-      const full = { ...profile, goal, targets, medications, stats, activity, savedAt: new Date().toLocaleDateString() };
-      localStorage.setItem("ham_profile", JSON.stringify(full));
-      setProfileSaved(true);
-      setTimeout(() => setProfileSaved(false), 2000);
-    } catch(e) { alert("Could not save profile. Storage may be unavailable."); }
-  };
 
-  const exportProfile = () => {
-    try {
-      const full = { ...profile, goal, targets, medications, stats, activity, savedAt: new Date().toLocaleDateString() };
-      const lines = [
-        "HORMONE ALIGNED MACROS — CLIENT PROFILE",
-        "Generated: " + new Date().toLocaleDateString(),
-        "",
-        "NAME: " + (full.name || "—"),
-        "AGE: " + (full.stats && full.stats.age ? full.stats.age : "—"),
-        "WEIGHT: " + (full.stats && full.stats.weight ? full.stats.weight + " lbs" : "—"),
-        "HEIGHT: " + (full.stats && full.stats.height_ft ? full.stats.height_ft + "'" + (full.stats.height_in || "0") + '"' : "—"),
-        "SEX: " + (full.stats && full.stats.sex ? full.stats.sex : "—"),
-        "",
-        "GOAL: " + (full.goal || "—"),
-        "ACTIVITY: " + (full.activity || "—"),
-        "CALORIES: " + (full.targets && full.targets.calories ? full.targets.calories : "—"),
-        "PROTEIN: " + (full.targets && full.targets.protein ? full.targets.protein + "g" : "—"),
-        "CARBS: " + (full.targets && full.targets.carbs ? full.targets.carbs + "g" : "—"),
-        "FAT: " + (full.targets && full.targets.fat ? full.targets.fat + "g" : "—"),
-        "",
-        "MEDICATIONS/PROTOCOLS: " + (full.medications && full.medications.length ? full.medications.join(", ") : "None"),
-        "",
-        "TRAINING SCHEDULE: " + (full.training || "—"),
-        "",
-        "NOTES: " + (full.notes || "—"),
-      ];
-      const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = (full.name || "client").replace(/\s/g, "-") + "-HAM-profile.txt";
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch(e) { alert("Export failed."); }
-  };
+
   const [loadingMsg, setLoadingMsg] = useState("");
   const restCache = useRef({});
   const fileRef = useRef(null);
@@ -604,15 +620,15 @@ function HamApp() {
         + storeNote
         + "Generate a weekly shopping list covering ALL requested meals. "
         + "CRITICAL: Every meal must have its protein included. Never skip a meal's main protein. "
-        + "For burgers: 93/7 grass-fed ground beef (2 lbs). For tacos: 93/7 grass-fed ground beef or chicken. "
+        + "For burgers: ONLY 93/7 grass-fed ground beef (2 lbs) — NEVER 80/20 or regular ground beef. For tacos: 93/7 grass-fed ground beef or chicken breast. "
         + "For spaghetti/pasta: Banza chickpea pasta + ground beef or turkey. "
         + "For salmon: fresh or frozen salmon fillets. For chicken meals: boneless skinless chicken breast. "
         + "Combine shared ingredients across meals (e.g. one onion entry covers multiple meals). "
         + "Max 6 items per section, max 7 sections. "
         + "SELECTION PRIORITY: 1. HIGHEST QUALITY (grass-fed, organic, wild-caught, single-ingredient). "
         + "2. LOWEST CALORIE when quality is equal. 3. FEWEST INGREDIENTS (shorter label wins). "
-        + "ALWAYS: grass-fed beef, free-range eggs, sourdough bread, jasmine rice, real butter or ghee, "
-        + "single-ingredient spices, Greek yogurt no added sugar, sugar-free sauces over regular. "
+        + "ALWAYS: 93/7 grass-fed beef only (never 80/20), free-range eggs, sourdough bread, jasmine rice, real butter or ghee, "
+        + "Siete seasoning for tacos (no other taco seasoning), single-ingredient spices, Greek yogurt no added sugar, sugar-free sauces over regular. "
         + "NEVER: bag microwave popcorn, margarine, processed cheese, instant oats, seed oils, regular sandwich bread. "
         + "QUANTITIES: specific numbers with units only (2 lbs, 12 oz, 4 count). Never say pack, handful, bunch. "
         + "Assign each item one badge: Quality Pick, Low Cal, or Clean Label. "
@@ -656,7 +672,7 @@ function HamApp() {
 
   const Nav = () => (
     <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "#141414", borderTop: "1px solid #2A2A2A", display: "flex", padding: "8px 12px 16px", gap: 6, zIndex: 100 }}>
-      {[["setup","⚙️","Setup"],["log","📝","Log"],["results","✦","Results"],["restaurant","🍽","Eat Out"],["shop","🛒","Shop"]].map(([s,icon,lbl]) => (
+      {[["setup","⚙️","Setup"],["log","📝","Log"],["results","✦","Results"],["restaurant","🍽","Eat Out"],["shop","🛒","Shop"],["profile","👤","Profile"]].map(([s,icon,lbl]) => (
         <button key={s} type="button" onClick={() => setScreen(s)} style={S.tab(screen === s)}>
           <div style={{ fontSize: 16, lineHeight: 1 }}>{icon}</div>
           <div style={{ fontSize: 9, marginTop: 2 }}>{lbl}</div>
@@ -1031,8 +1047,33 @@ function HamApp() {
       <div style={S.header}>
         <div style={{ fontSize: 11, letterSpacing: "0.15em", color: BRAND.orange, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>My Profile</div>
         <h1 style={S.h1}>Client Profile</h1>
-        <p style={S.sub}>Fill this out once. It saves to your device and you can export it to share with Derek.</p>
+        <p style={S.sub}>Save your info once. Access it on any device with your personal code.</p>
       </div>
+
+      {/* Load existing profile */}
+      <div style={{ ...S.card, borderLeft: "3px solid " + BRAND.orange }}>
+        <span style={S.label}>Have a code? Load your profile</span>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <input style={{ ...S.input, flex: 1 }} placeholder="Enter your personal code"
+            value={profileCodeInput} onChange={e => setProfileCodeInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && loadProfileFromServer()} />
+          <button type="button" onClick={loadProfileFromServer}
+            style={{ background: BRAND.orange, border: "none", borderRadius: 10, padding: "0 18px", color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer", opacity: profileLoading ? 0.7 : 1 }}
+            disabled={profileLoading}>
+            {profileLoading ? "…" : "Load"}
+          </button>
+        </div>
+        <p style={{ fontSize: 11, color: BRAND.muted, margin: 0 }}>This loads your previously saved profile on any device.</p>
+      </div>
+
+      {profileStatus && (
+        <div style={{ marginBottom: 16, padding: "12px 14px", borderRadius: 10,
+          background: profileStatus.type === "success" ? "#4CAF8222" : "#E8464622",
+          border: "1.5px solid " + (profileStatus.type === "success" ? "#4CAF82" : "#E84646"),
+          color: profileStatus.type === "success" ? "#4CAF82" : "#E84646", fontSize: 13, fontWeight: 600 }}>
+          {profileStatus.msg}
+        </div>
+      )}
 
       <div style={S.card}>
         <span style={S.label}>Your Name</span>
@@ -1042,14 +1083,8 @@ function HamApp() {
       <div style={S.card}>
         <span style={S.label}>Your Stats</span>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-          <div>
-            <span style={{ ...S.label, marginBottom: 4 }}>Age</span>
-            <input style={S.input} type="number" placeholder="35" value={stats.age} onChange={e => setStats(s => ({ ...s, age: e.target.value }))} />
-          </div>
-          <div>
-            <span style={{ ...S.label, marginBottom: 4 }}>Weight (lbs)</span>
-            <input style={S.input} type="number" placeholder="185" value={stats.weight} onChange={e => setStats(s => ({ ...s, weight: e.target.value }))} />
-          </div>
+          <div><span style={{ ...S.label, marginBottom: 4 }}>Age</span><input style={S.input} type="number" placeholder="35" value={stats.age} onChange={e => setStats(s => ({ ...s, age: e.target.value }))} /></div>
+          <div><span style={{ ...S.label, marginBottom: 4 }}>Weight (lbs)</span><input style={S.input} type="number" placeholder="185" value={stats.weight} onChange={e => setStats(s => ({ ...s, weight: e.target.value }))} /></div>
         </div>
         <div style={{ marginBottom: 10 }}>
           <span style={S.label}>Height</span>
@@ -1073,7 +1108,7 @@ function HamApp() {
         <span style={S.label}>Goal</span>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {GOALS.map(g => (
-            <button type="button" key={g.id} onClick={() => { setGoal(g.id); }}
+            <button type="button" key={g.id} onClick={() => setGoal(g.id)}
               style={{ background: goal === g.id ? BRAND.orange + "22" : "#252525", border: "1.5px solid " + (goal === g.id ? BRAND.orange : "#333"), borderRadius: 10, padding: "10px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
               <span style={{ fontSize: 20 }}>{g.icon}</span>
               <div>
@@ -1088,7 +1123,7 @@ function HamApp() {
       <div style={S.card}>
         <span style={S.label}>Activity Level</span>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {[["sedentary","Sedentary — desk job, little movement"],["light","Lightly Active — 1–3 days/week"],["moderate","Moderately Active — 3–5 days/week"],["very","Very Active — 6–7 days/week"]].map(([key, lbl]) => (
+          {[["sedentary","Sedentary — desk job, little movement"],["light","Lightly Active — 1-3 days/week"],["moderate","Moderately Active — 3-5 days/week"],["very","Very Active — 6-7 days/week"]].map(([key, lbl]) => (
             <button type="button" key={key} onClick={() => setActivity(key)}
               style={{ padding: "10px 12px", borderRadius: 10, border: "1.5px solid " + (activity === key ? BRAND.orange : "#333"), background: activity === key ? BRAND.orange + "22" : "#252525", color: activity === key ? BRAND.orange : BRAND.offwhite, fontWeight: activity === key ? 700 : 400, fontSize: 13, cursor: "pointer", textAlign: "left" }}>
               {lbl}
@@ -1100,7 +1135,7 @@ function HamApp() {
       <div style={S.card}>
         <span style={S.label}>Medications / Protocols</span>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {["HRT — Testosterone","HRT — Estrogen / Progesterone","GLP-1 (Ozempic / Wegovy / Mounjaro)","Other peptide protocol"].map(med => (
+          {MED_OPTIONS.map(med => (
             <button type="button" key={med} onClick={() => toggleMed(med)}
               style={{ background: medications.includes(med) ? BRAND.orange + "22" : "#252525", border: "1.5px solid " + (medications.includes(med) ? BRAND.orange : "#333"), borderRadius: 10, padding: "10px 14px", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ width: 16, height: 16, borderRadius: 4, border: "2px solid " + (medications.includes(med) ? BRAND.orange : "#555"), background: medications.includes(med) ? BRAND.orange : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 11, color: "#fff" }}>{medications.includes(med) ? "✓" : ""}</span>
@@ -1113,170 +1148,32 @@ function HamApp() {
       <div style={S.card}>
         <span style={S.label}>Training Schedule</span>
         <textarea style={{ ...S.input, resize: "vertical", lineHeight: 1.6 }} rows={3}
-          placeholder="e.g. Mon/Wed/Fri upper body, Tue/Thu lower body, weekends off"
+          placeholder="e.g. Mon/Wed/Fri upper body, Tue/Thu lower body"
           value={profile.training || ""} onChange={e => setProfile(p => ({ ...p, training: e.target.value }))} />
       </div>
 
       <div style={S.card}>
-        <span style={S.label}>Daily Targets</span>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-          {["protein","carbs","fat"].map(m => (
-            <div key={m} style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: BRAND.offwhite }}>{targets[m]}g</div>
-              <div style={{ fontSize: 11, color: BRAND.muted }}>{m}</div>
-            </div>
-          ))}
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: BRAND.orange }}>{targets.calories}</div>
-            <div style={{ fontSize: 11, color: BRAND.muted }}>cal</div>
-          </div>
-        </div>
-        <p style={{ fontSize: 12, color: BRAND.muted, margin: 0, lineHeight: 1.5 }}>Set in Setup. Update there to change these.</p>
-      </div>
-
-      <div style={S.card}>
         <span style={S.label}>Notes for Derek</span>
-        <textarea style={{ ...S.input, resize: "vertical", lineHeight: 1.6 }} rows={4}
-          placeholder="Anything else Derek should know — injuries, food preferences, lifestyle factors, questions…"
+        <textarea style={{ ...S.input, resize: "vertical", lineHeight: 1.6 }} rows={3}
+          placeholder="Injuries, food preferences, lifestyle factors, questions..."
           value={profile.notes || ""} onChange={e => setProfile(p => ({ ...p, notes: e.target.value }))} />
       </div>
 
-      <button type="button" style={S.btn} onClick={saveProfile}>
-        {profileSaved ? "✓ Profile Saved" : "Save Profile"}
-      </button>
+      <div style={S.card}>
+        <span style={S.label}>Choose your personal code</span>
+        <input style={S.input} placeholder="e.g. derek123 or anything you will remember"
+          value={profileCode} onChange={e => { setProfileCode(e.target.value); setProfileStatus(null); }} />
+        <p style={{ fontSize: 11, color: BRAND.muted, margin: "6px 0 0", lineHeight: 1.5 }}>3+ characters. Use this to load your profile on any device.</p>
+      </div>
 
-      <button type="button" onClick={exportProfile}
-        style={{ ...S.btn, background: "transparent", border: "1.5px solid " + BRAND.orange, color: BRAND.orange, marginTop: 12 }}>
-        Export Profile for Derek ↓
+      <button type="button" style={{ ...S.btn, opacity: profileLoading ? 0.7 : 1 }} onClick={saveProfileToServer} disabled={profileLoading}>
+        {profileLoading ? "Saving..." : profileSaved ? "Saved" : "Save Profile"}
       </button>
-
-      <p style={{ fontSize: 11, color: BRAND.muted, textAlign: "center", marginTop: 12, lineHeight: 1.6, paddingBottom: 8 }}>
-        Profile saves to this device. Export creates a text file you can email or message to derek@freethemacro.com
-      </p>
 
       <Nav />
     </div>
   );
 
-  // ── SHOPPING LIST ────────────────────────────────────────────────────────────
-  if (screen === "shop") return (
-    <div style={S.screen}>
-      <div style={S.header}>
-        <div style={{ fontSize: 11, letterSpacing: "0.15em", color: BRAND.orange, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Weekly Planning</div>
-        <h1 style={S.h1}>Smart Shopping<br />List</h1>
-        <p style={S.sub}>Add your meals for the week. Get a quality-first shopping list organized by store section.</p>
-      </div>
-
-      <div style={S.card}>
-        <span style={S.label}>Where are you shopping?</span>
-        <p style={{ fontSize: 12, color: BRAND.muted, margin: "0 0 10px", lineHeight: 1.5 }}>Pick 1-2 stores for brand-specific suggestions.</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {STORES.map(store => (
-            <button type="button" key={store.id} onClick={() => toggleStore(store.name)}
-              style={{ padding: "7px 12px", borderRadius: 20, border: "1.5px solid " + (shopStores.includes(store.name) ? BRAND.orange : "#333"), background: shopStores.includes(store.name) ? BRAND.orange + "22" : "#252525", color: shopStores.includes(store.name) ? BRAND.orange : BRAND.muted, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-              {store.emoji} {store.name}
-            </button>
-          ))}
-        </div>
-        {shopStores.length > 0 && <p style={{ fontSize: 11, color: BRAND.orange, margin: "10px 0 0", fontWeight: 700 }}>Shopping at: {shopStores.join(" + ")}</p>}
-      </div>
-
-      {/* Meal input */}
-      <div style={S.card}>
-        <span style={S.label}>Type a meal</span>
-        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-          <input style={{ ...S.input, flex: 1 }} placeholder="e.g. burgers, tacos, spaghetti"
-            value={shopInput} onChange={e => setShopInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addShopInput()} />
-          <button type="button" onClick={addShopInput}
-            style={{ background: BRAND.orange, border: "none", borderRadius: 10, padding: "0 16px", color: "#fff", fontWeight: 800, fontSize: 18, cursor: "pointer", flexShrink: 0 }}>+</button>
-        </div>
-
-        {shopMeals.length >= 3 && (
-          <div style={{ background: BRAND.orange + "22", border: "1.5px solid " + BRAND.orange, borderRadius: 10, padding: "10px 14px", marginBottom: 12 }}>
-            <p style={{ fontSize: 13, color: BRAND.orange, fontWeight: 700, margin: 0 }}>3 meal max for now — recipes coming soon that will unlock more.</p>
-          </div>
-        )}
-        <span style={S.label}>Or pick from common meals</span>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {PRESET_MEALS.map(meal => (
-            <button type="button" key={meal} onClick={() => addShopMeal(meal)}
-              style={{ padding: "6px 12px", borderRadius: 20, border: "1.5px solid " + (shopMeals.includes(meal) ? BRAND.orange : "#333"), background: shopMeals.includes(meal) ? BRAND.orange + "22" : "#252525", color: shopMeals.includes(meal) ? BRAND.orange : BRAND.muted, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-              {meal}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Selected meals */}
-      {shopMeals.length > 0 && (
-        <div style={S.card}>
-          <span style={S.label}>This week's meals</span>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-            {shopMeals.map(meal => (
-              <div key={meal} style={{ display: "flex", alignItems: "center", gap: 6, background: "#252525", borderRadius: 20, padding: "5px 10px 5px 12px", border: "1.5px solid " + BRAND.orange }}>
-                <span style={{ fontSize: 13, color: BRAND.offwhite, fontWeight: 600 }}>{meal}</span>
-                <button type="button" onClick={() => removeShopMeal(meal)}
-                  style={{ background: "none", border: "none", color: BRAND.muted, cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1 }}>✕</button>
-              </div>
-            ))}
-          </div>
-          {shopError && <div style={{ background: "#E8464622", border: "1px solid #E84646", borderRadius: 10, padding: "10px 14px", color: "#E84646", fontSize: 13, marginBottom: 12 }}>{shopError}</div>}
-          <button type="button" onClick={generateShopList} style={{ ...S.btn, opacity: shopLoading ? 0.7 : 1 }} disabled={shopLoading}>
-            {shopLoading ? shopLoadingMsg || "Building your list…" : "Build Shopping List ✦"}
-          </button>
-          {shopLoading && (
-            <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 14 }}>
-              {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: BRAND.orange, animation: "pulse 1.2s ease-in-out " + (i*0.4) + "s infinite" }} />)}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Shopping list results */}
-      {shopList && (
-        <>
-          <div style={{ ...S.card, borderLeft: "3px solid " + BRAND.orange }}>
-            <p style={{ color: BRAND.offwhite, fontSize: 14, lineHeight: 1.7, margin: "0 0 4px" }}>Quality-first list for <strong>{shopList.meals && shopList.meals.join(", ")}</strong></p>
-            <p style={{ color: BRAND.muted, fontSize: 12, margin: 0 }}>Ingredients chosen for minimal processing and macro alignment.</p>
-          </div>
-
-          {shopList.sections && shopList.sections.map((sec, i) => (
-            <div key={i} style={S.card}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                <span style={{ fontSize: 20 }}>{sec.emoji}</span>
-                <span style={{ fontWeight: 800, fontSize: 14, color: BRAND.offwhite, textTransform: "uppercase", letterSpacing: "0.06em" }}>{sec.name}</span>
-              </div>
-              {sec.items && sec.items.map((item, j) => (
-                <div key={j} style={{ paddingBottom: 10, marginBottom: 10, borderBottom: j < sec.items.length - 1 ? "1px solid #2A2A2A" : "none" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                    <span style={{ fontSize: 14, color: BRAND.offwhite, fontWeight: 600, flex: 1 }}>{item.name}</span>
-                    {item.quantity && <span style={{ fontSize: 11, color: BRAND.muted, marginLeft: 8, flexShrink: 0 }}>{item.quantity}</span>}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    {item.badge && <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, background: item.badge === "Quality Pick" ? "#4CAF8222" : item.badge === "Low Cal" ? "#9B6EE822" : BRAND.orange + "22", color: item.badge === "Quality Pick" ? "#4CAF82" : item.badge === "Low Cal" ? "#9B6EE8" : BRAND.orange }}>{item.badge}</span>}
-                    {item.note && <span style={{ fontSize: 11, color: BRAND.muted, lineHeight: 1.4 }}>{item.note}</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
-
-          <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-            <button type="button" onClick={downloadShopList}
-              style={{ ...S.btn, flex: 1 }}>
-              Download List ↓
-            </button>
-            <button type="button" onClick={() => { setShopList(null); setShopMeals([]); setShopInput(""); }}
-              style={{ ...S.btn, flex: 1, background: "transparent", border: "1.5px solid #333", color: BRAND.muted }}>
-              Start Over
-            </button>
-          </div>
-        </>
-      )}
-      <Nav />
-    </div>
-  );
 
   if (screen === "cookbook") return (
     <div style={S.screen}>
