@@ -1059,8 +1059,9 @@ function HamApp() {
             const scoreCol = opt.fit_score >= 80 ? "#4CAF82" : opt.fit_score >= 55 ? BRAND.orange : "#E84646";
             const isSelected = selectedOpt === i;
             return (
+              <React.Fragment key={i}>
               {isSelected ? (
-                <div key={i} style={{ background: "#1E1E1E", borderRadius: 14, padding: 20, marginBottom: 16, border: "2px solid " + BRAND.orange }}>
+                <div style={{ background: "#1E1E1E", borderRadius: 14, padding: 20, marginBottom: 16, border: "2px solid " + BRAND.orange }}>
                   <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: BRAND.orange, marginBottom: 8 }}>{restResults.restaurant || restaurant}</div>
                   <div style={{ fontWeight: 800, fontSize: 18, color: BRAND.offwhite, marginBottom: 14, lineHeight: 1.3 }}>{opt.name}</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
@@ -1102,7 +1103,7 @@ function HamApp() {
                   <p style={{ fontSize: 11, color: BRAND.muted, textAlign: "center", margin: "10px 0 0" }}>Screenshot or Save Card, then upload to your tracking app to log this meal.</p>
                 </div>
               ) : (
-                <div key={i} id={"opt-card-" + i}
+                <div id={"opt-card-" + i}
                 onMouseDown={() => { optPressTimer.current = setTimeout(() => setSelectedOpt(i), 500); }}
                 onMouseUp={() => clearTimeout(optPressTimer.current)}
                 onMouseLeave={() => clearTimeout(optPressTimer.current)}
@@ -1135,6 +1136,7 @@ function HamApp() {
                 )}
               </div>
               )}
+              </React.Fragment>
             );
           })}
           <button type="button" style={{ ...S.btn, background: "transparent", border: "1.5px solid #333", color: BRAND.muted, marginBottom: 16 }}
