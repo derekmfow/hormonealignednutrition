@@ -1175,6 +1175,105 @@ function HamApp() {
   );
 
 
+
+  // ── SHOPPING LIST ────────────────────────────────────────────────────────────
+  if (screen === "shop") return (
+    <div style={S.screen}>
+      <div style={S.header}>
+        <div style={{ fontSize: 11, letterSpacing: "0.15em", color: BRAND.orange, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Weekly Planning</div>
+        <h1 style={S.h1}>Smart Shopping<br />List</h1>
+        <p style={S.sub}>Add your meals for the week. Get a quality-first shopping list organized by store section.</p>
+      </div>
+
+      {/* Meal input */}
+      <div style={S.card}>
+        <span style={S.label}>Type a meal</span>
+        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+          <input style={{ ...S.input, flex: 1 }} placeholder="e.g. burgers, tacos, spaghetti"
+            value={shopInput} onChange={e => setShopInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addShopInput()} />
+          <button type="button" onClick={addShopInput}
+            style={{ background: BRAND.orange, border: "none", borderRadius: 10, padding: "0 16px", color: "#fff", fontWeight: 800, fontSize: 18, cursor: "pointer", flexShrink: 0 }}>+</button>
+        </div>
+
+        <span style={S.label}>Or pick from common meals</span>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {PRESET_MEALS.map(meal => (
+            <button type="button" key={meal} onClick={() => addShopMeal(meal)}
+              style={{ padding: "6px 12px", borderRadius: 20, border: "1.5px solid " + (shopMeals.includes(meal) ? BRAND.orange : "#333"), background: shopMeals.includes(meal) ? BRAND.orange + "22" : "#252525", color: shopMeals.includes(meal) ? BRAND.orange : BRAND.muted, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              {meal}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Selected meals */}
+      {shopMeals.length > 0 && (
+        <div style={S.card}>
+          <span style={S.label}>This week's meals</span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+            {shopMeals.map(meal => (
+              <div key={meal} style={{ display: "flex", alignItems: "center", gap: 6, background: "#252525", borderRadius: 20, padding: "5px 10px 5px 12px", border: "1.5px solid " + BRAND.orange }}>
+                <span style={{ fontSize: 13, color: BRAND.offwhite, fontWeight: 600 }}>{meal}</span>
+                <button type="button" onClick={() => removeShopMeal(meal)}
+                  style={{ background: "none", border: "none", color: BRAND.muted, cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1 }}>✕</button>
+              </div>
+            ))}
+          </div>
+          {shopError && <div style={{ background: "#E8464622", border: "1px solid #E84646", borderRadius: 10, padding: "10px 14px", color: "#E84646", fontSize: 13, marginBottom: 12 }}>{shopError}</div>}
+          <button type="button" onClick={generateShopList} style={{ ...S.btn, opacity: shopLoading ? 0.7 : 1 }} disabled={shopLoading}>
+            {shopLoading ? shopLoadingMsg || "Building your list…" : "Build Shopping List ✦"}
+          </button>
+          {shopLoading && (
+            <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 14 }}>
+              {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: BRAND.orange, animation: "pulse 1.2s ease-in-out " + (i*0.4) + "s infinite" }} />)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Shopping list results */}
+      {shopList && (
+        <>
+          <div style={{ ...S.card, borderLeft: "3px solid " + BRAND.orange }}>
+            <p style={{ color: BRAND.offwhite, fontSize: 14, lineHeight: 1.7, margin: "0 0 4px" }}>Quality-first list for <strong>{shopList.meals && shopList.meals.join(", ")}</strong></p>
+            <p style={{ color: BRAND.muted, fontSize: 12, margin: 0 }}>Ingredients chosen for minimal processing and macro alignment.</p>
+          </div>
+
+          {shopList.sections && shopList.sections.map((sec, i) => (
+            <div key={i} style={S.card}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 20 }}>{sec.emoji}</span>
+                <span style={{ fontWeight: 800, fontSize: 14, color: BRAND.offwhite, textTransform: "uppercase", letterSpacing: "0.06em" }}>{sec.name}</span>
+              </div>
+              {sec.items && sec.items.map((item, j) => (
+                <div key={j} style={{ paddingBottom: 10, marginBottom: 10, borderBottom: j < sec.items.length - 1 ? "1px solid #2A2A2A" : "none" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 14, color: BRAND.offwhite, fontWeight: 600, flex: 1 }}>{item.name}</span>
+                    {item.quantity && <span style={{ fontSize: 11, color: BRAND.muted, marginLeft: 8, flexShrink: 0 }}>{item.quantity}</span>}
+                  </div>
+                  {item.note && <p style={{ fontSize: 12, color: BRAND.orange, margin: "3px 0 0", lineHeight: 1.4 }}>{item.note}</p>}
+                </div>
+              ))}
+            </div>
+          ))}
+
+          <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+            <button type="button" onClick={downloadShopList}
+              style={{ ...S.btn, flex: 1 }}>
+              Download List ↓
+            </button>
+            <button type="button" onClick={() => { setShopList(null); setShopMeals([]); setShopInput(""); }}
+              style={{ ...S.btn, flex: 1, background: "transparent", border: "1.5px solid #333", color: BRAND.muted }}>
+              Start Over
+            </button>
+          </div>
+        </>
+      )}
+      <Nav />
+    </div>
+  );
+
   if (screen === "cookbook") return (
     <div style={S.screen}>
       <div style={S.header}>
