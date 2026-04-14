@@ -882,7 +882,7 @@ function HamApp() {
     <div style={S.screen}>
       <div style={S.header}>
         <h1 style={S.h1}>Analyze Your Day</h1>
-        <p style={S.sub}>Enter your meals and get a full breakdown with swap recommendations.</p>
+        <p style={S.sub}>Type your meals or upload a screenshot from your tracking app. We analyze what you ate and show you exactly what to refine — no judgment, just clarity.</p>
       </div>
       <div onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDrop} onClick={() => fileRef.current && fileRef.current.click()}
         style={{ border: "2px dashed " + (dragOver ? BRAND.orange : "#444"), borderRadius: 14, padding: "22px 16px", textAlign: "center", marginBottom: 20, cursor: "pointer", background: dragOver ? BRAND.orange + "0A" : "#1A1A1A", transition: "all 0.2s" }}>
