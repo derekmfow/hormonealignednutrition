@@ -1059,13 +1059,56 @@ function HamApp() {
             const scoreCol = opt.fit_score >= 80 ? "#4CAF82" : opt.fit_score >= 55 ? BRAND.orange : "#E84646";
             const isSelected = selectedOpt === i;
             return (
-              <div key={i} id={"opt-card-" + i}
+              {isSelected ? (
+                <div key={i} style={{ background: "#1E1E1E", borderRadius: 14, padding: 20, marginBottom: 16, border: "2px solid " + BRAND.orange }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: BRAND.orange, marginBottom: 8 }}>{restResults.restaurant || restaurant}</div>
+                  <div style={{ fontWeight: 800, fontSize: 18, color: BRAND.offwhite, marginBottom: 14, lineHeight: 1.3 }}>{opt.name}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
+                    {[["Calories", opt.calories, BRAND.orange],["Protein", opt.protein + "g", "#4CAF82"],["Carbs", opt.carbs + "g", BRAND.orange],["Fat", opt.fat + "g", "#9B6EE8"]].map(([lbl, val, col]) => (
+                      <div key={lbl} style={{ background: "#252525", borderRadius: 10, padding: "10px 6px", textAlign: "center" }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: col }}>{val}</div>
+                        <div style={{ fontSize: 10, color: BRAND.muted, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 2 }}>{lbl}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button type="button"
+                      onClick={() => {
+                        const el = document.getElementById("clean-card-" + i);
+                        if (!el) return;
+                        const canvas = document.createElement("canvas");
+                        const scale = 2;
+                        const rect = el.getBoundingClientRect();
+                        canvas.width = rect.width * scale;
+                        canvas.height = rect.height * scale;
+                        const ctx = canvas.getContext("2d");
+                        ctx.scale(scale, scale);
+                        ctx.fillStyle = "#1E1E1E";
+                        ctx.fillRect(0, 0, rect.width, rect.height);
+                        const dataUrl = canvas.toDataURL("image/png");
+                        const a = document.createElement("a");
+                        a.href = dataUrl;
+                        a.download = opt.name.replace(/[^a-z0-9]/gi, "-") + ".png";
+                        a.click();
+                      }}
+                      style={{ flex: 1, padding: "12px 0", background: BRAND.orange, border: "none", borderRadius: 10, color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+                      Save Card ↓
+                    </button>
+                    <button type="button" onClick={() => setSelectedOpt(null)}
+                      style={{ padding: "12px 16px", background: "transparent", border: "1.5px solid #333", borderRadius: 10, color: BRAND.muted, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                      Back
+                    </button>
+                  </div>
+                  <p style={{ fontSize: 11, color: BRAND.muted, textAlign: "center", margin: "10px 0 0" }}>Screenshot or Save Card, then upload to your tracking app to log this meal.</p>
+                </div>
+              ) : (
+                <div key={i} id={"opt-card-" + i}
                 onMouseDown={() => { optPressTimer.current = setTimeout(() => setSelectedOpt(i), 500); }}
                 onMouseUp={() => clearTimeout(optPressTimer.current)}
                 onMouseLeave={() => clearTimeout(optPressTimer.current)}
                 onTouchStart={() => { optPressTimer.current = setTimeout(() => setSelectedOpt(i), 500); }}
                 onTouchEnd={() => clearTimeout(optPressTimer.current)}
-                style={{ ...S.card, borderLeft: "3px solid " + (isSelected ? BRAND.orange : scoreCol), boxShadow: isSelected ? "0 0 0 2px " + BRAND.orange + "44" : "none", transition: "all 0.2s" }}>
+                style={{ ...S.card, borderLeft: "3px solid " + scoreCol, transition: "all 0.2s" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                   <div style={{ flex: 1, marginRight: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -1091,6 +1134,7 @@ function HamApp() {
                   </div>
                 )}
               </div>
+              )}
             );
           })}
           <button type="button" style={{ ...S.btn, background: "transparent", border: "1.5px solid #333", color: BRAND.muted, marginBottom: 16 }}
