@@ -390,6 +390,8 @@ function HamApp() {
   const [restLoading, setRestLoading] = useState(false);
   const [restResults, setRestResults] = useState(null);
   const [restError, setRestError] = useState(null);
+  const [selectedOpt, setSelectedOpt] = useState(null);
+  const optPressTimer = useRef(null);
   const [profile, setProfile] = useState({ name: "", training: "", notes: "" });
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileCode, setProfileCode] = useState("");
@@ -1008,7 +1010,7 @@ function HamApp() {
       <div style={S.header}>
         <div style={{ fontSize: 11, letterSpacing: "0.15em", color: BRAND.orange, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Eating Out</div>
         <h1 style={S.h1}>Find Your<br />Best Order</h1>
-        <p style={S.sub}>Type the restaurant and what you are thinking — we find what fits your macros.</p>
+        <p style={S.sub}>Type the restaurant and what you are thinking — we find what fits your macros. Long-press any result to select it, then download or screenshot to log it in your tracking app.</p>
       </div>
       <div style={S.card}>
         <div style={{ marginBottom: 12 }}>
@@ -1055,8 +1057,15 @@ function HamApp() {
           <span style={{ ...S.label, display: "block", marginBottom: 10 }}>Top 5 Options — Ranked by Macro Fit</span>
           {restResults.options && restResults.options.map((opt, i) => {
             const scoreCol = opt.fit_score >= 80 ? "#4CAF82" : opt.fit_score >= 55 ? BRAND.orange : "#E84646";
+            const isSelected = selectedOpt === i;
             return (
-              <div key={i} style={{ ...S.card, borderLeft: "3px solid " + scoreCol }}>
+              <div key={i} id={"opt-card-" + i}
+                onMouseDown={() => { optPressTimer.current = setTimeout(() => setSelectedOpt(i), 500); }}
+                onMouseUp={() => clearTimeout(optPressTimer.current)}
+                onMouseLeave={() => clearTimeout(optPressTimer.current)}
+                onTouchStart={() => { optPressTimer.current = setTimeout(() => setSelectedOpt(i), 500); }}
+                onTouchEnd={() => clearTimeout(optPressTimer.current)}
+                style={{ ...S.card, borderLeft: "3px solid " + (isSelected ? BRAND.orange : scoreCol), boxShadow: isSelected ? "0 0 0 2px " + BRAND.orange + "44" : "none", transition: "all 0.2s" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                   <div style={{ flex: 1, marginRight: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
