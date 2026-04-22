@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Hormone Aligned Macros</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -27,11 +30,9 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
 <script type="text/babel">
 const { useState, useRef, useCallback } = React;
 
-// ── Config ────────────────────────────────────────────────────────────────────
 const CLIENT_PIN = "1987";
 const ANTHROPIC_KEY = "PASTE_API_KEY_HERE";
 
-// ── PIN Gate ──────────────────────────────────────────────────────────────────
 function PinGate({ children }) {
   const [pin, setPin] = React.useState("");
   const [unlocked, setUnlocked] = React.useState(
@@ -105,6 +106,19 @@ const GOALS = [
 
 const COOKBOOKS = [];
 
+const DEREK_RECIPES=[
+{id:"tacos",name:"Hormone Aligned Tacos",emoji:"[Tacos]",tags:["High Protein","Quick"],
+ ingredients:["93/7 grass-fed ground beef","Siete taco seasoning","G Hughes sugar-free sauce","Fat-free Greek yogurt","Parmigiano-Reggiano self-shredded OR fat-free cheddar","La Banderita low-carb tortillas OR Siete shells"],
+ mealEntry:"93/7 grass-fed ground beef tacos with Siete taco seasoning, G Hughes sauce, fat-free Greek yogurt, shredded Parmigiano-Reggiano, La Banderita low-carb tortillas"},
+{id:"burgers",name:"Derek's Burgers",emoji:"[Burger]",tags:["High Protein","Simple"],
+ ingredients:["93/7 grass-fed ground beef","Sourdough bread","Garlic salt, salt, black pepper","Primal Kitchen or G Hughes sugar-free ketchup"],
+ mealEntry:"93/7 grass-fed ground beef burger on sourdough bread, garlic salt, salt, pepper, Primal Kitchen ketchup"},
+{id:"tuna_bowl",name:"Tuna Power Bowl",emoji:"[Fish]",tags:["High Protein","Gut Health"],
+ ingredients:["Tuna steak","Jasmine or black rice","Sauerkraut","Fat-free Greek yogurt","Fat-free cheese","Lemon pepper"],
+ mealEntry:"Tuna steak over jasmine rice, sauerkraut, fat-free Greek yogurt, fat-free cheese, lemon pepper"}
+];
+
+
 const MACRO_PROFILES = {
   fat_loss: { protein: 35, carbs: 40, fat: 25 },
   recomp:   { protein: 35, carbs: 40, fat: 25 },
@@ -127,7 +141,7 @@ function gramsToCalPct(g, macro, cal) {
   return Math.round((g * (macro === "fat" ? 9 : 4) / cal) * 100);
 }
 
-const DEREK_INGREDIENTS = "DEREK APPROVED LIST: Proteins: 93/7 grass-fed beef (L2), chicken breast, turkey, canned tuna (L1), tuna steak (L2), eggs, egg whites (fast-digesting, great for GLP-1), Greek yogurt full-fat or fat-free, kefir. Dairy/Fat: real butter (L2), ghee (L2), fat-free cheese (L1), Parmigiano-Reggiano block self-shredded (L2, no anti-caking agents). Carbs: white/jasmine/black rice, Einkhorn wheat flour (L2), Zego oats (L2), cream of rice, homemade sourdough (L2), clean-label wraps/taco shells (L1), pan-popped popcorn NOT bag (L2). Fruits: berries, bananas (pre/post workout), pineapple. Condiments: Siete seasonings (L2), single-ingredient spices (L2), monk fruit powder, maple syrup (moderation), PB Fit (L1). Gut health: sauerkraut, kefir. Sweets: low-cal options with clean sweeteners (no maltitol/sorbitol). SWAP RULE: Always offer L1 easy switch AND L2 less processed. Never say healthier. Say less processed. Client picks — curiosity not compliance.";
+const DEREK_INGREDIENTS = "APPROVED: 93/7 grass-fed beef, chicken, turkey, tuna(canned L1/steak L2), eggs, egg whites, fat-free Greek yogurt, kefir. Fat: butter/ghee(L2), fat-free cheese(L1), Parmigiano self-shredded(L2). Carbs: jasmine/black/white rice, oats, cream of rice, sourdough(L2), clean wraps(L1), pan-pop popcorn. Fruits: berries, bananas, pineapple. Condiments: Siete(L2), single-ingredient spices, monk fruit, maple syrup, PBfit powder(L1 mix with water to pb texture). Gut: sauerkraut/kefir. No maltitol/sorbitol.";
 
 async function apiCall(payload) {
   const res = await fetch("/api/claude", {
@@ -143,7 +157,7 @@ async function readScreenshot(base64, mimeType) {
   const data = await apiCall({
     model: "claude-sonnet-4-20250514",
     max_tokens: 1000,
-    system: 'Read this nutrition tracking app screenshot. Extract every meal and food item. Output valid JSON only: {"meals":[{"name":"Breakfast","items":"food1, food2"}],"totals":{"calories":0,"protein":0,"carbs":0,"fat":0}}. Use Meal 1/2/3 if names unclear. Set totals to 0 if not visible.',
+    system: 'Extract meals from nutrition app screenshot. JSON only: {"meals":[{"name":"Meal 1","items":"food1"}],"totals":{"calories":0,"protein":0,"carbs":0,"fat":0}}. Meal 1/2/3 if unclear.',
     messages: [{ role: "user", content: [
       { type: "image", source: { type: "base64", media_type: safe, data: base64 } },
       { type: "text", text: "Extract all meals and food items. Return JSON only." }
@@ -155,11 +169,11 @@ async function readScreenshot(base64, mimeType) {
 }
 
 async function analyzeMeals(meals, goal, targets, medications) {
-  const medNote = medications.length ? "Client protocols: " + medications.join(", ") : "No medications.";
+  const medNote = medications.length ? "Protocols: "+medications.join(",") : "";
   const mealList = meals.map((m, i) => "Meal " + (i+1) + " — " + m.name + ": " + m.items).join("\n");
-  const userMsg = "Goal: " + goal + "\nTargets: " + targets.protein + "g protein, " + targets.carbs + "g carbs, " + targets.fat + "g fat (" + targets.calories + " cal)\n" + medNote + "\n\nMeals:\n" + mealList + "\n\nAnalyze and return JSON.";
+  const userMsg = "Goal:"+goal+" Targets:"+targets.protein+"g P,"+targets.carbs+"g C,"+targets.fat+"g F,"+targets.calories+"cal\n"+medNote+"\nMeals:\n"+mealList;
 
-  const sysMsg = "You are the AI coaching engine for Hormone Aligned Macros by Derek Fowler — 16-year nutrition coach specializing in HRT and GLP-1 clients who lift weights.\n\nCORE RULES:\n- MACRO COMPLIANCE IS THE FIRST PRIORITY. Hitting targets = a WIN. Celebrate it.\n- Only suggest swaps when something is genuinely off. Never manufacture suggestions.\n- Derek's method: gradual ingredient reduction toward single-ingredient whole foods while keeping meals intact and tasting good. Long-term process. Do not rush.\n- If macros are on target and food is reasonable, return strong status with empty swaps. Acknowledge the win.\n- Never say healthier. Say less processed.\n- Protein minimum 1g per lb bodyweight daily. In deficit 1.1-1.3g. Minimum 30g every 4 hours.\n- If any meal under 30g protein that is the first fix. Flag it.\n- Never cut protein to hit calories.\n\nHRT: increased appetite first 1-3 months is normal. May need more carbs/protein. Do not aggressively cut during stabilization.\nGLP-1: hunger suppressed pharmacologically. Must hit protein even with no appetite. Avoid high-fat high-volume combos. Fast-digesting proteins for low appetite.\n\n" + DEREK_INGREDIENTS + "\n\nDUAL SWAP FORMAT: Every swap offers two options:\n- swap_easy: Level 1 easy switch\n- swap_clean: Level 2 less processed\nOnly include swaps when genuinely needed.\n\nOUTPUT valid JSON only:\n{\"summary\":\"2-3 sentences. Lead with congratulations if macros on target. Lead with biggest fix if off. Never say healthier.\",\"flags\":[\"urgent issues only\"],\"score\":{\"protein\":0,\"carbs\":0,\"fat\":0,\"overall\":0} — ALL scores are 0-100 scale only. Never 1-10. 100=perfect, 80+=strong, 55-79=aligned, below 55=needs work. — IMPORTANT: ALL score values must be 0-100 scale. Never use 1-10. 100 = perfect. 80+ = strong. 55-79 = aligned. Below 55 = needs work.,\"meals\":[{\"meal\":\"name\",\"status\":\"needs_work|aligned|strong\",\"note\":\"1-2 sentences\",\"swaps\":[{\"swap_out\":\"ingredient\",\"why\":\"reason\",\"swap_easy\":{\"name\":\"...\",\"note\":\"...\",\"impact\":\"...\"},\"swap_clean\":{\"name\":\"...\",\"note\":\"...\",\"impact\":\"...\"}}]}]}";
+  const sysMsg = "HAM coach. Hit macros=WIN, celebrate. Only swap when off. Less processed not healthier. Protein 1g/lb, 30g/meal, flag if under, never cut protein. No deli/hot dogs. No Cheez-Its/Goldfish/Ritz.\nHRT: appetite up 1-3mo normal, may need more carbs/protein.\nGLP-1: must hit protein, avoid high-fat+volume, use egg whites/shrimp/whey.\n"+DEREK_INGREDIENTS+"\nswap_easy=L1, swap_clean=L2. Include one score-explanation line per macro in summary.\nJSON:{\"summary\":\"coaching+score notes\",\"flags\":[],\"score\":{\"protein\":0,\"carbs\":0,\"fat\":0,\"overall\":0},\"meals\":[{\"meal\":\"\",\"status\":\"needs_work|aligned|strong\",\"note\":\"\",\"swaps\":[{\"swap_out\":\"\",\"why\":\"\",\"swap_easy\":{\"name\":\"\",\"note\":\"\",\"impact\":\"\"},\"swap_clean\":{\"name\":\"\",\"note\":\"\",\"impact\":\"\"}}]}]} 0-100 scores.";
 
   const data = await apiCall({
     model: "claude-sonnet-4-20250514",
@@ -174,11 +188,8 @@ async function analyzeMeals(meals, goal, targets, medications) {
 
 async function lookupRestaurant(restaurant, orderQuery, targets) {
   const tgt = targets.protein + "g protein, " + targets.carbs + "g carbs, " + targets.fat + "g fat (" + targets.calories + " cal) daily. Per meal aim for 25-35% of daily totals.";
-  const isSpecificItem = orderQuery.length > 0 && !orderQuery.toLowerCase().includes("something") && !orderQuery.toLowerCase().includes("anything") && !orderQuery.toLowerCase().includes("whatever");
-  const sysMsg = "You are a nutrition expert for Hormone Aligned Macros. Use real menu data and nutrition knowledge. Client daily targets: " + tgt
-    + " Output valid JSON only, no markdown. Format: {\"restaurant\":\"name\",\"searched_item\":{\"name\":\"exact item name or null\",\"calories\":0,\"protein\":0,\"carbs\":0,\"fat\":0,\"note\":\"brief macro context\"},\"summary\":\"1-2 sentences\",\"options\":[{\"rank\":1,\"name\":\"item\",\"calories\":0,\"protein\":0,\"carbs\":0,\"fat\":0,\"fit_score\":0,\"fit_note\":\"why this fits\",\"modification\":\"order tip or empty\"}]}"
-    + " If the client searched for a specific item (not just browsing), populate searched_item with its real macros. Then show top 5 alternatives ranked by macro fit. Always prioritize protein.";
-  const userMsg = "Restaurant: " + restaurant + ". Client wants: " + orderQuery + ". Return JSON with the searched item macros (if specific) plus top 5 macro-aligned alternatives.";
+  const sysMsg = "HAM nutrition expert. Real menu data. Targets: "+tgt+' JSON only: {"restaurant":"","searched_item":{"name":"","calories":0,"protein":0,"carbs":0,"fat":0,"note":""},"summary":"","options":[{"rank":1,"name":"","calories":0,"protein":0,"carbs":0,"fat":0,"fit_score":0,"fit_note":"","modification":""}]} Populate searched_item if specific item. Top 5 alternatives by macro fit. Protein first.';
+  const userMsg = "Restaurant: "+restaurant+". Wants: "+orderQuery+". Return searched item macros + top 5 alternatives.";
   const data = await apiCall({
     model: "claude-sonnet-4-20250514",
     max_tokens: 1500,
@@ -190,7 +201,6 @@ async function lookupRestaurant(restaurant, orderQuery, targets) {
   catch { return null; }
 }
 
-// ── Shared Components ─────────────────────────────────────────────────────────
 
 function Tag({ children, color }) {
   const c = color || BRAND.orange;
@@ -362,7 +372,258 @@ function CookbookCard({ recipe }) {
   );
 }
 
-// ── Main App ──────────────────────────────────────────────────────────────────
+function buildCardHtml(opt,restaurant){
+  return "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#1A1A1A;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:Georgia,serif;padding:24px}.card{background:#1E1E1E;border-radius:16px;padding:24px;border:1px solid #333;max-width:360px;width:100%}.restaurant{font-size:11px;letter-spacing:.15em;color:#E8611A;font-weight:700;text-transform:uppercase;margin-bottom:8px}.name{font-size:20px;font-weight:800;color:#F5F0EB;margin-bottom:20px;line-height:1.3}.macros{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}.macro{background:#252525;border-radius:10px;padding:10px 6px;text-align:center}.macro-val{font-size:16px;font-weight:800}.macro-lbl{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}.tip{font-size:11px;color:#888;text-align:center;line-height:1.5}</style></head><body><div class=\"card\"><div class=\"restaurant\">"
+  +restaurant+"</div><div class=\"name\">"+opt.name+"</div><div class=\"macros\"><div class=\"macro\"><div class=\"macro-val\" style=\"color:#E8611A\">"+opt.calories+"</div><div class=\"macro-lbl\">Cal</div></div><div class=\"macro\"><div class=\"macro-val\" style=\"color:#4CAF82\">"+opt.protein+"g</div><div class=\"macro-lbl\">Protein</div></div><div class=\"macro\"><div class=\"macro-val\" style=\"color:#E8611A\">"+opt.carbs+"g</div><div class=\"macro-lbl\">Carbs</div></div><div class=\"macro\"><div class=\"macro-val\" style=\"color:#9B6EE8\">"+opt.fat+"g</div><div class=\"macro-lbl\">Fat</div></div></div><div class=\"tip\">Screenshot and upload to your tracking app.</div></div></body></html>";
+}
+
+/* =========================================================
+   COACHING CTA — floating pill that points users to Buffalo Method coaching.
+
+   Styled to match the Buffalo Method brand (white modal, Barlow Condensed
+   display, orange accents) so it feels like a distinct "product-within-a-product"
+   sitting inside HAM. Pill remains dark to work on HAM's dark background.
+
+   POSTs inquiries to the Buffalo Method coaching backend. CORS is locked to
+   this origin (hormonealignednutrition.onrender.com) so the request only
+   works from within HAM. Honeypot field "website" is hidden from real users
+   — bots fill it, the server silently drops those.
+
+   isCoachingClient prop: pass true for users who are already Derek's coaching
+   clients and the CTA hides itself. Currently defaulted to false (everyone
+   sees it) — wire the real check when ready.
+   ========================================================= */
+const COACHING_API_URL = "https://buffalocoach.onrender.com/api/inquiries";
+const COACHING_LINKS = {
+  skool:    "https://www.skool.com/hormonealigned-macros-9379/about",
+  linktree: "https://linktr.ee/hormonealignednutrition",
+};
+
+// Font stacks so everything downstream refers to one source of truth.
+const BM_DISPLAY = '"Barlow Condensed", "Arial Narrow", Impact, sans-serif';
+const BM_BODY    = '"Barlow", system-ui, -apple-system, sans-serif';
+
+function CoachingCTA({ isCoachingClient = false }) {
+  const [open, setOpen] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  if (isCoachingClient) return null;
+  if (dismissed) return null;
+
+  const pillWrap = { position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 40, fontFamily: BM_BODY };
+  const pill = { background: "#1A1A1A", color: "#fff", borderRadius: 9999, boxShadow: "0 20px 40px rgba(0,0,0,0.35)", paddingLeft: 16, paddingRight: 8, paddingTop: 8, paddingBottom: 8, display: "flex", alignItems: "center", gap: 12 };
+  const dot = { width: 8, height: 8, background: "#E8611A", borderRadius: 9999, flexShrink: 0 };
+  const label = { fontSize: 14 };
+  const learnBtn = { background: "#E8611A", color: "#fff", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", fontSize: 12, padding: "8px 16px", borderRadius: 9999, border: "none", cursor: "pointer", fontFamily: BM_DISPLAY };
+  const xBtn = { background: "transparent", color: "#8a8a8a", border: "none", cursor: "pointer", width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 };
+
+  return (
+    <React.Fragment>
+      <div style={pillWrap}>
+        <div style={pill}>
+          <div style={dot}></div>
+          <span style={label}>Want 1:1 guidance from Derek?</span>
+          <button onClick={()=>setOpen(true)} style={learnBtn}>LEARN MORE</button>
+          <button onClick={()=>setDismissed(true)} title="Hide" style={xBtn} aria-label="Dismiss">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      {open && <InquiryModal onClose={()=>setOpen(false)}/>}
+    </React.Fragment>
+  );
+}
+
+function InquiryModal({ onClose }) {
+  const [form, setForm] = useState({ name:"", email:"", context:"", website:"" });
+  const [submitted, setSubmitted] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
+  React.useEffect(() => {
+    const h = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [onClose]);
+
+  const submitInquiry = async () => {
+    if (submitting) return;
+    const e = {};
+    if (!form.name.trim())  e.name  = "Required";
+    if (!form.email.trim()) e.email = "Required";
+    else if (!/^\S+@\S+\.\S+$/.test(form.email)) e.email = "Invalid email";
+    if (Object.keys(e).length) return setErrors(e);
+
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      const res = await fetch(COACHING_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name:    form.name.trim(),
+          email:   form.email.trim(),
+          message: form.context.trim(),
+          website: form.website,
+          source:  "ham_app",
+        }),
+      });
+      if (res.ok) { setSubmitted(true); return; }
+      let serverMsg = "";
+      try { const data = await res.json(); serverMsg = data.error || ""; } catch {}
+      if (res.status === 429) {
+        setSubmitError(serverMsg || "You've sent a few of these recently. Give it an hour and try again, or reach Derek via the links below.");
+      } else {
+        setSubmitError(serverMsg || "Something went wrong sending that. Try again in a minute?");
+      }
+    } catch (err) {
+      console.error("[inquiry] network error:", err);
+      setSubmitError("Couldn't reach the server. Check your connection and try again, or reach Derek via the links below.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // White modal / Buffalo Method brand — matches the design from the uploaded CTA file.
+  const backdrop  = { position: "fixed", inset: 0, background: "rgba(26,26,26,0.7)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 0, fontFamily: BM_BODY };
+  const card      = { background: "#fff", color: "#1A1A1A", borderTopLeftRadius: 16, borderTopRightRadius: 16, boxShadow: "0 -10px 40px rgba(0,0,0,0.5)", width: "100%", maxWidth: 512, maxHeight: "92vh", overflowY: "auto" };
+  const body      = { padding: 32, position: "relative" };
+  const closeBtn  = { position: "absolute", top: 14, right: 14, background: "transparent", color: "#a3a3a3", border: "none", cursor: "pointer", padding: 6, display: "flex", alignItems: "center", justifyContent: "center" };
+  const brandRow  = { display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 12 };
+  const brandDot  = { width: 8, height: 8, background: "#E8611A", borderRadius: 9999 };
+  const brandTxt  = { fontFamily: BM_DISPLAY, fontSize: 12, fontWeight: 700, letterSpacing: "0.2em", color: "#737373", textTransform: "uppercase" };
+  const h2        = { fontFamily: BM_DISPLAY, fontSize: 36, fontWeight: 700, lineHeight: 0.95, marginBottom: 20, color: "#1A1A1A", letterSpacing: "0.01em" };
+  const para      = { color: "#404040", marginBottom: 24, lineHeight: 1.6, fontSize: 15 };
+  const fieldGrp  = { marginBottom: 16 };
+  const fieldLbl  = { display: "block", fontFamily: BM_DISPLAY, fontSize: 12, fontWeight: 600, letterSpacing: "0.12em", color: "#525252", marginBottom: 6, textTransform: "uppercase" };
+  const fieldInp  = { width: "100%", background: "#fff", border: "1px solid #e5e5e5", borderRadius: 4, padding: "10px 12px", color: "#1A1A1A", fontSize: 15, outline: "none", boxSizing: "border-box", fontFamily: BM_BODY };
+  const fieldInpFocus = { borderColor: "#E8611A" };
+  const fieldErr  = { color: "#dc2626", fontSize: 12, marginTop: 4, fontWeight: 500 };
+  const errorBox  = { background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", borderRadius: 4, padding: "10px 14px", marginBottom: 14, fontSize: 14, lineHeight: 1.4 };
+  const primary   = { width: "100%", padding: "14px", background: submitting ? "#d4d4d4" : "#E8611A", color: "#fff", border: "none", borderRadius: 4, fontSize: 14, fontWeight: 700, cursor: submitting ? "wait" : "pointer", fontFamily: BM_DISPLAY, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 };
+  const divider   = { display: "flex", alignItems: "center", gap: 12, margin: "16px 0" };
+  const divLine   = { flex: 1, height: 1, background: "#e5e5e5" };
+  const divTxt    = { fontFamily: BM_DISPLAY, fontSize: 11, fontWeight: 600, letterSpacing: "0.15em", color: "#a3a3a3", textTransform: "uppercase" };
+  const secondary = { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "12px", background: "#fff", color: "#1A1A1A", border: "1px solid #d4d4d4", borderRadius: 4, fontFamily: BM_DISPLAY, fontSize: 14, fontWeight: 700, textAlign: "center", textDecoration: "none", letterSpacing: "0.12em", textTransform: "uppercase", boxSizing: "border-box" };
+  const tertiary  = { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "8px", marginTop: 8, background: "transparent", color: "#737373", border: "none", fontFamily: BM_DISPLAY, fontSize: 13, fontWeight: 600, textAlign: "center", textDecoration: "none", letterSpacing: "0.12em", textTransform: "uppercase", boxSizing: "border-box" };
+  const honeypot  = { position: "absolute", left: "-9999px", width: 1, height: 1, overflow: "hidden" };
+  const successBx = { padding: 32, textAlign: "center" };
+  const checkCirc = { width: 64, height: 64, background: "#FFF1E8", borderRadius: 9999, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: "#E8611A" };
+
+  // External-link icon used inside the secondary buttons
+  const ExtIcon = () => (
+    <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
+      <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+    </svg>
+  );
+
+  return (
+    <div style={backdrop} onClick={onClose}>
+      <div style={card} onClick={(e)=>e.stopPropagation()}>
+        {!submitted ? (
+          <div style={body}>
+            <button onClick={onClose} style={closeBtn} aria-label="Close">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/>
+              </svg>
+            </button>
+
+            <div style={brandRow}>
+              <div style={brandDot}></div>
+              <span style={brandTxt}>The Buffalo Method</span>
+            </div>
+            <h2 style={h2}>Work with Derek 1:1</h2>
+            <p style={para}>
+              Coaching for lifters — whether or not you're on GLP-1, HRT, or even "enhanced." Daily meal uploads, photo feedback, weekly check-ins. Nutrition and lifting programs built for you, by us, so that you own your results. I help clear the noise so you can finally focus on what matters to you.
+            </p>
+
+            <div style={fieldGrp}>
+              <label style={fieldLbl}>Your name</label>
+              <input value={form.name}
+                onChange={(e)=>{ setForm({...form, name:e.target.value}); setErrors({...errors, name:null}); }}
+                onFocus={(e)=>Object.assign(e.target.style, fieldInpFocus)}
+                onBlur={(e)=>{ e.target.style.borderColor = "#e5e5e5"; }}
+                placeholder="Jane Doe" style={fieldInp}/>
+              {errors.name && <p style={fieldErr}>{errors.name}</p>}
+            </div>
+            <div style={fieldGrp}>
+              <label style={fieldLbl}>Email</label>
+              <input type="email" value={form.email}
+                onChange={(e)=>{ setForm({...form, email:e.target.value}); setErrors({...errors, email:null}); }}
+                onFocus={(e)=>Object.assign(e.target.style, fieldInpFocus)}
+                onBlur={(e)=>{ e.target.style.borderColor = "#e5e5e5"; }}
+                placeholder="jane@example.com" style={fieldInp}/>
+              {errors.email && <p style={fieldErr}>{errors.email}</p>}
+            </div>
+            <div style={{ ...fieldGrp, marginBottom: 20 }}>
+              <label style={fieldLbl}>What are you working on?</label>
+              <textarea rows={3} value={form.context}
+                onChange={(e)=>setForm({...form, context:e.target.value})}
+                onFocus={(e)=>Object.assign(e.target.style, fieldInpFocus)}
+                onBlur={(e)=>{ e.target.style.borderColor = "#e5e5e5"; }}
+                placeholder="Optional — current protocol, training experience, what you're trying to solve…"
+                style={{ ...fieldInp, resize: "none" }}/>
+            </div>
+
+            {/* Honeypot — hidden from users, tempting for bots */}
+            <div aria-hidden="true" style={honeypot}>
+              <label>Website (leave blank)
+                <input type="text" tabIndex={-1} autoComplete="off"
+                  value={form.website} onChange={(e)=>setForm({...form, website:e.target.value})}/>
+              </label>
+            </div>
+
+            {submitError && <div style={errorBox}>{submitError}</div>}
+
+            <button onClick={submitInquiry} disabled={submitting} style={primary}>
+              {submitting ? "Sending…" : "Send Inquiry"}
+            </button>
+
+            <div style={divider}>
+              <div style={divLine}></div>
+              <span style={divTxt}>or</span>
+              <div style={divLine}></div>
+            </div>
+
+            <a href={COACHING_LINKS.skool} target="_blank" rel="noopener noreferrer" style={secondary}>
+              Join the Free Community
+              <ExtIcon/>
+            </a>
+            <a href={COACHING_LINKS.linktree} target="_blank" rel="noopener noreferrer" style={tertiary}>
+              All My Links
+              <ExtIcon/>
+            </a>
+          </div>
+        ) : (
+          <div style={successBx}>
+            <div style={checkCirc}>
+              <svg width="32" height="32" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+              </svg>
+            </div>
+            <h2 style={h2}>Got it.</h2>
+            <p style={para}>Derek will get back to you within 24 hours. While you wait, come hang out in the community — that's where most of the real conversations happen.</p>
+            <a href={COACHING_LINKS.skool} target="_blank" rel="noopener noreferrer"
+               style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 28px", background: "#E8611A", color: "#fff", fontFamily: BM_DISPLAY, fontSize: 14, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", borderRadius: 4, textDecoration: "none", marginBottom: 12 }}>
+              Join the Community
+              <ExtIcon/>
+            </a>
+            <div>
+              <button onClick={onClose}
+                style={{ background: "transparent", color: "#737373", border: "none", cursor: "pointer", fontFamily: BM_DISPLAY, fontSize: 13, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", padding: 8 }}>
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function HamApp() {
   const [screen, setScreen] = useState("setup");
   const [goal, setGoal] = useState("fat_loss");
@@ -461,7 +722,22 @@ function HamApp() {
   const [shopList, setShopList] = useState(null);
   const [shopError, setShopError] = useState(null);
   const [shopLoadingMsg, setShopLoadingMsg] = useState("");
+
   const [shopStores, setShopStores] = useState([]);
+
+  const [builderOpen,setBuilderOpen]=useState(false);
+  const [builderCarb,setBuilderCarb]=useState("");
+  const [builderProtein,setBuilderProtein]=useState("");
+  const [builderFat,setBuilderFat]=useState("");
+  const MEAL_BUILDER_PROTEINS=["Beef","Fish","Chicken","Turkey","Seafood","Whey Powder","Eggs","Egg Whites","Fat-Free Greek Yogurt","Fat-Free Cheese"];
+  const MEAL_BUILDER_CARBS=["Oats","White Rice","Black Rice","Cream of Rice","Taco Shells/Wraps","Black Beans","Fruit","Potatoes"];
+  const MEAL_BUILDER_FATS=["Butter","Ghee","Avocado Oil","Olive Oil","Macadamia Oil","Cheese","Peanut Butter"];
+  const addBuilderMeal=()=>{
+    if(!builderProtein)return;
+    const parts=[builderProtein,builderCarb,builderFat].filter(Boolean);
+    setMeals(m=>[...m,{id:uid(),name:builderProtein+(builderCarb?" & "+builderCarb:"")+" Bowl",items:parts.join(", ")}]);
+    setBuilderCarb("");setBuilderProtein("");setBuilderFat("");setBuilderOpen(false);
+  };
 
 
 
@@ -557,12 +833,7 @@ function HamApp() {
       return;
     }
     setRestError(null); setRestLoading(true); setRestResults(null);
-    const msgs = [
-      "Checking " + restaurant + " menu…",
-      "Matching macros to your targets…",
-      "Ranking best options…",
-      "Almost there…"
-    ];
+    const msgs = ["Checking menu…","Matching macros…","Ranking options…","Almost there…"];
     let msgIdx = 0;
     setLoadingMsg(msgs[0]);
     const msgTimer = setInterval(() => {
@@ -628,39 +899,22 @@ function HamApp() {
   const generateShopList = async () => {
     if (!shopMeals.length) { setShopError("Add at least one meal first."); return; }
     setShopError(null); setShopLoading(true); setShopList(null);
-    const msgs = ["Finding best ingredients…", "Applying quality standards…", "Organizing by store section…", "Almost done…"];
+    const msgs = ["Finding ingredients…","Applying quality standards…","Organizing by section…","Almost done…"];
     let idx = 0;
     setShopLoadingMsg(msgs[0]);
     const t = setInterval(() => { idx = Math.min(idx+1, msgs.length-1); setShopLoadingMsg(msgs[idx]); }, 1800);
     try {
-      const mealStr = shopMeals.join(", ");
+      const mealStr=shopMeals.map(m=>{const r=DEREK_RECIPES.find(x=>x.name===m);return r?r.name+"("+r.mealEntry+")":m;}).join("; ");
       const storeNote = shopStores.length ? "Shopping at: " + shopStores.join(", ") + ". Suggest brands available at these stores. " : "";
-      const sysMsg = "You are a nutrition shopping expert for Hormone Aligned Macros by Derek Fowler. "
-        + storeNote
-        + "Generate a weekly shopping list covering ALL requested meals. "
-        + "CRITICAL: Every meal must have its protein included. Never skip a meal's main protein. "
-        + "For burgers: ONLY 93/7 grass-fed ground beef (2 lbs) — NEVER 80/20 or regular ground beef. For tacos: 93/7 grass-fed ground beef or chicken breast. "
-        + "For spaghetti/pasta: Banza chickpea pasta + ground beef or turkey. "
-        + "For salmon: fresh or frozen salmon fillets. For chicken meals: boneless skinless chicken breast. "
-        + "Combine shared ingredients across meals (e.g. one onion entry covers multiple meals). "
-        + "Max 6 items per section, max 7 sections. "
-        + "SELECTION PRIORITY: 1. HIGHEST QUALITY (grass-fed, organic, wild-caught, single-ingredient). "
-        + "2. LOWEST CALORIE when quality is equal. 3. FEWEST INGREDIENTS (shorter label wins). "
-        + "ALWAYS: 93/7 grass-fed beef only (never 80/20), free-range eggs, sourdough bread, jasmine rice, real butter or ghee, "
-        + "Siete seasoning for tacos (no other taco seasoning), single-ingredient spices, Greek yogurt no added sugar, sugar-free sauces over regular. "
-        + "NEVER: bag microwave popcorn, margarine, processed cheese, instant oats, seed oils, regular sandwich bread. "
-        + "QUANTITIES: specific numbers with units only (2 lbs, 12 oz, 4 count). Never say pack, handful, bunch. "
-        + "Assign each item one badge: Quality Pick, Low Cal, or Clean Label. "
-        + "Output valid JSON only, no markdown: "
-        + '{"meals":["meal1"],"sections":[{"name":"Section Name","emoji":"emoji","items":[{"name":"item","note":"brand or quality tip","badge":"Quality Pick|Low Cal|Clean Label","quantity":"2 lbs"}]}]}';
-      const userMsg = "Weekly meals: " + mealStr + ". Generate a complete shopping list organized by store section with quality-first ingredient choices.";
+      const sysMsg = "HAM shopping list. "+storeNote+"Never skip meal protein. Burgers:93/7 beef 2lb. Tacos:93/7 beef/chicken+Siete. Pasta:Banza+beef/turkey. Combine shared items. Max 6/section, 7 sections. Priority: quality>cal>fewest ingredients. ALWAYS: 93/7 beef, free-range eggs, sourdough, jasmine rice, butter/ghee, Siete taco seasoning, single-ingredient spices, plain Greek yogurt, sugar-free sauces. NEVER: bag popcorn, margarine, processed cheese, instant oats, seed oils, regular bread, deli meat. Qty: numbers+units only. Badge: Quality Pick|Low Cal|Clean Label. "
+        + '{"meals":[],"sections":[{"name":"","emoji":"","items":[{"name":"","note":"","badge":"","quantity":""}]}]}';
+      const userMsg = "Weekly meals: "+mealStr+". Shopping list by store section.";
       const data = await apiCall({
         model: "claude-sonnet-4-20250514",
         max_tokens: 2000,
         system: sysMsg,
         messages: [{ role: "user", content: userMsg }]
       });
-      console.log("API response:", JSON.stringify(data).substring(0, 200));
       const text = data.content?.find(b => b.type === "text")?.text || "{}";
       const parsed = JSON.parse(text.replace(/\u0060\u0060\u0060json|\u0060\u0060\u0060/g, "").trim());
       setShopList(parsed);
@@ -700,7 +954,6 @@ function HamApp() {
     </div>
   );
 
-  // ── SETUP ─────────────────────────────────────────────────────────────────
   if (screen === "setup") return (
     <div style={S.screen}>
       <div style={S.header}>
@@ -879,7 +1132,6 @@ function HamApp() {
     </div>
   );
 
-  // ── LOG ────────────────────────────────────────────────────────────────────
   if (screen === "log") return (
     <div style={S.screen}>
       <div style={S.header}>
@@ -895,6 +1147,43 @@ function HamApp() {
         }
       </div>
       {scanError && <div style={{ background: "#E8464622", border: "1px solid #E84646", borderRadius: 10, padding: "10px 14px", color: "#E84646", fontSize: 13, marginBottom: 12 }}>{scanError}</div>}
+      <div style={{ marginBottom:16 }}>
+        <button type="button" onClick={()=>setBuilderOpen(o=>!o)}
+          style={{ ...S.btn, background:"transparent", border:"1.5px solid #4CAF82", color:"#4CAF82", fontSize:14 }}>
+          &#x1F9F1; {builderOpen?"Close Meal Builder":"Build a Meal"}
+        </button>
+        {builderOpen&&(
+          <div style={{ ...S.card, marginTop:10, borderLeft:"3px solid #4CAF82" }}>
+            <p style={{ fontSize:13, fontWeight:800, color:"#4CAF82", marginBottom:8, textTransform:"uppercase" }}>Meal Builder</p>
+            <p style={{ fontSize:12, color:BRAND.muted, marginBottom:12, lineHeight:1.5 }}>Pick your building blocks. Protein required.</p>
+            {[["Protein","#4CAF82",MEAL_BUILDER_PROTEINS,builderProtein,setBuilderProtein],
+              ["Carb",BRAND.orange,MEAL_BUILDER_CARBS,builderCarb,setBuilderCarb],
+              ["Fat","#9B6EE8",MEAL_BUILDER_FATS,builderFat,setBuilderFat]].map(([lbl,col,opts,val,setter])=>(
+              <div key={lbl} style={{ marginBottom:12 }}>
+                <span style={S.label}>{lbl}{lbl==="Protein"&&<span style={{color:"#E84646"}}> *</span>}</span>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                  {opts.map(item=>(
+                    <button type="button" key={item} onClick={()=>setter(val===item?"":item)}
+                      style={{ padding:"5px 10px", borderRadius:20, border:"1.5px solid "+(val===item?col:"#333"), background:val===item?col+"22":"#252525", color:val===item?col:BRAND.muted, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {builderProtein&&(
+              <div style={{ background:"#1A1A1A", borderRadius:8, padding:"8px 12px", marginBottom:10, border:"1px solid #333" }}>
+                <span style={{ fontSize:11, color:BRAND.muted, fontWeight:700 }}>Preview: </span>
+                <span style={{ fontSize:13, color:BRAND.offwhite }}>{builderProtein}{builderCarb?" + "+builderCarb:""}{builderFat?" + "+builderFat:""}</span>
+              </div>
+            )}
+            <button type="button" onClick={addBuilderMeal} disabled={!builderProtein}
+              style={{ ...S.btn, background:builderProtein?"#4CAF82":"#333", color:builderProtein?"#fff":BRAND.muted }}>
+              Add to Meal Log +
+            </button>
+          </div>
+        )}
+      </div>
       {meals.map(meal => (
         <div key={meal.id} style={S.card}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -924,7 +1213,6 @@ function HamApp() {
     </div>
   );
 
-  // ── RESULTS ────────────────────────────────────────────────────────────────
   if (screen === "results") return (
     <div style={S.screen}>
       <div style={S.header}>
@@ -1004,7 +1292,6 @@ function HamApp() {
     </div>
   );
 
-  // ── RESTAURANT ────────────────────────────────────────────────────────────
   if (screen === "restaurant") return (
     <div style={S.screen}>
       <div style={S.header}>
@@ -1076,7 +1363,7 @@ function HamApp() {
                     <button type="button"
                       onClick={() => {
                         const restaurant = restResults.restaurant || "";
-                        const html = "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#1A1A1A;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:Georgia,serif;padding:24px;}  .card{background:#1E1E1E;border-radius:16px;padding:24px;border:2px solid #E8611A;max-width:380px;width:100%;}.label{font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#E8611A;margin-bottom:8px;}.name{font-weight:800;font-size:20px;color:#F5F0EB;margin-bottom:16px;line-height:1.3;}.macros{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:20px;}.macro{background:#252525;border-radius:10px;padding:10px 6px;text-align:center;}.macro-val{font-size:18px;font-weight:800;}.macro-lbl{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;}.tip{font-size:12px;color:#888;text-align:center;line-height:1.5;}</style></head><body><div class=\"card\"><div class=\"label\">" + restaurant + "</div><div class=\"name\">" + opt.name + "</div><div class=\"macros\"><div class=\"macro\"><div class=\"macro-val\" style=\"color:#E8611A\">" + opt.calories + "</div><div class=\"macro-lbl\">Cal</div></div><div class=\"macro\"><div class=\"macro-val\" style=\"color:#4CAF82\">" + opt.protein + "g</div><div class=\"macro-lbl\">Protein</div></div><div class=\"macro\"><div class=\"macro-val\" style=\"color:#E8611A\">" + opt.carbs + "g</div><div class=\"macro-lbl\">Carbs</div></div><div class=\"macro\"><div class=\"macro-val\" style=\"color:#9B6EE8\">" + opt.fat + "g</div><div class=\"macro-lbl\">Fat</div></div></div><div class=\"tip\">Screenshot this card and upload to your tracking app to log this meal.</div></div></body></html>";
+                        const html = buildCardHtml(opt, restaurant);
                         const w = window.open("", "_blank");
                         if (w) { w.document.write(html); w.document.close(); }
                       }}
@@ -1137,10 +1424,7 @@ function HamApp() {
     </div>
   );
 
-  // ── COOKBOOK ──────────────────────────────────────────────────────────────
-  // ── PROFILE ────────────────────────────────────────────────────────────────
 
-  // ── SHOPPING LIST ────────────────────────────────────────────────────────────
   if (screen === "shop") return (
     <div style={S.screen}>
       <div style={S.header}>
@@ -1149,6 +1433,34 @@ function HamApp() {
         <p style={S.sub}>Add your meals for the week. Get a quality-first shopping list organized by store section.</p>
       </div>
 
+      <div style={{ ...S.card, borderLeft:"3px solid #4CAF82", marginBottom:16 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+          <span style={{ fontSize:18 }}>&#x1F4D6;</span>
+          <span style={{ fontSize:13, fontWeight:800, color:"#4CAF82", textTransform:"uppercase", letterSpacing:"0.06em" }}>My Recipes</span>
+          <span style={{ fontSize:11, color:BRAND.muted, fontStyle:"italic" }}>exact ingredients</span>
+        </div>
+        {DEREK_RECIPES.map(recipe=>{
+          const isAdded=shopMeals.includes(recipe.name);
+          return(
+            <div key={recipe.id} style={{ background:"#1A1A1A", borderRadius:10, padding:12, border:"1.5px solid "+(isAdded?"#4CAF82":"#2A2A2A"), marginBottom:8 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
+                <div style={{ flex:1, marginRight:8 }}>
+                  <div style={{ fontSize:14, fontWeight:800, color:BRAND.offwhite }}>{recipe.emoji} {recipe.name}</div>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginTop:4 }}>
+                    {recipe.tags.map(t=><span key={t} style={{ fontSize:10, fontWeight:700, background:"#4CAF8222", color:"#4CAF82", padding:"2px 7px", borderRadius:20 }}>{t}</span>)}
+                  </div>
+                </div>
+                <button type="button"
+                  onClick={()=>isAdded?removeShopMeal(recipe.name):(shopMeals.length<3&&setShopMeals(m=>[...m,recipe.name]))}
+                  style={{ background:isAdded?"#4CAF82":"transparent", border:"1.5px solid #4CAF82", borderRadius:8, padding:"5px 10px", color:isAdded?"#fff":"#4CAF82", fontWeight:800, fontSize:12, cursor:"pointer", flexShrink:0 }}>
+                  {isAdded?"✓ Added":"+ Add"}
+                </button>
+              </div>
+              <div style={{ fontSize:11, color:BRAND.muted, lineHeight:1.6 }}>{recipe.ingredients.join(" · ")}</div>
+            </div>
+          );
+        })}
+      </div>
       {/* Meal input */}
       <div style={S.card}>
         <span style={S.label}>Type a meal</span>
@@ -1261,7 +1573,20 @@ function HamApp() {
   return null;
 }
 
-ReactDOM.render(<PinGate><HamApp /></PinGate>, document.getElementById("root"));
+// Root wrapper — PinGate's React.cloneElement only accepts a single child, so
+// we wrap HamApp + CoachingCTA in one component. PinGate forwards pendingProfileCode
+// to this wrapper, which passes it down to HamApp. CoachingCTA only mounts after
+// PIN unlock since it lives inside the PinGate tree.
+function HamRoot(props) {
+  return (
+    <React.Fragment>
+      <HamApp {...props} />
+      <CoachingCTA />
+    </React.Fragment>
+  );
+}
+
+ReactDOM.render(<PinGate><HamRoot /></PinGate>, document.getElementById("root"));
 </script>
 </body>
 </html>
