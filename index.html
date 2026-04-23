@@ -497,7 +497,9 @@ function InquiryModal({ onClose }) {
   };
 
   // White modal / Buffalo Method brand — matches the design from the uploaded CTA file.
-  const backdrop  = { position: "fixed", inset: 0, background: "rgba(26,26,26,0.7)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 0, fontFamily: BM_BODY };
+  // zIndex 200 keeps it above HAM's bottom nav (z-index 100) so the Skool/Linktree
+  // links at the bottom of the modal aren't covered by Setup/Analyze/Results/etc.
+  const backdrop  = { position: "fixed", inset: 0, background: "rgba(26,26,26,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 0, fontFamily: BM_BODY };
   const card      = { background: "#fff", color: "#1A1A1A", borderTopLeftRadius: 16, borderTopRightRadius: 16, boxShadow: "0 -10px 40px rgba(0,0,0,0.5)", width: "100%", maxWidth: 512, maxHeight: "92vh", overflowY: "auto" };
   const body      = { padding: 32, position: "relative" };
   const closeBtn  = { position: "absolute", top: 14, right: 14, background: "transparent", color: "#a3a3a3", border: "none", cursor: "pointer", padding: 6, display: "flex", alignItems: "center", justifyContent: "center" };
