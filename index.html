@@ -23,6 +23,12 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
   0%, 100% { opacity: 0.2; transform: scale(0.8); }
   50% { opacity: 1; transform: scale(1.2); }
 }
+/* Gentle glow animation for the 1:1 Coaching pill — draws the eye on first
+   load without being annoying. Runs forever but the amplitude is small. */
+@keyframes bm-cta-glow {
+  0%, 100% { box-shadow: 0 4px 14px rgba(232,97,26,0.45), 0 0 0 0 rgba(232,97,26,0.55); }
+  50%      { box-shadow: 0 4px 14px rgba(232,97,26,0.55), 0 0 0 8px rgba(232,97,26,0.00); }
+}
 </style>
 </head>
 <body>
@@ -31,7 +37,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
 const { useState, useRef, useCallback } = React;
 
 const CLIENT_PIN = "1987";
-const ANTHROPIC_KEY = "PASTE_API_KEY_HERE";
 
 function PinGate({ children }) {
   const [pin, setPin] = React.useState("");
@@ -408,31 +413,32 @@ function CoachingCTA({ isCoachingClient = false }) {
   if (isCoachingClient) return null;
 
   // Fixed top-right so it appears on every screen without modifying HAM's
-  // per-screen headers. top value includes safe-area-inset for iOS notches
-  // when installed as a PWA. The whole pill is one clickable button.
+  // per-screen headers. Sized large and animated with a gentle pulsing ring
+  // (bm-cta-glow keyframe in the <style> block) so first-time users actually
+  // notice it — previously too subtle, most test users missed it.
   const pillBtn = {
     position: "fixed",
-    top: "max(12px, env(safe-area-inset-top, 12px))",
-    right: 12,
+    top: "max(14px, env(safe-area-inset-top, 14px))",
+    right: 14,
     zIndex: 40,
     background: "#E8611A",
     color: "#fff",
     border: "none",
     borderRadius: 9999,
-    padding: "7px 14px 7px 10px",
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: "0.12em",
+    padding: "12px 20px 12px 16px",
+    fontSize: 14,
+    fontWeight: 800,
+    letterSpacing: "0.1em",
     textTransform: "uppercase",
     fontFamily: BM_DISPLAY,
     cursor: "pointer",
-    boxShadow: "0 6px 16px rgba(0,0,0,0.4)",
+    animation: "bm-cta-glow 2.4s ease-in-out infinite",
     display: "inline-flex",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
     lineHeight: 1,
   };
-  const dot = { width: 6, height: 6, background: "#fff", borderRadius: 9999, flexShrink: 0 };
+  const dot = { width: 9, height: 9, background: "#fff", borderRadius: 9999, flexShrink: 0 };
 
   return (
     <React.Fragment>
